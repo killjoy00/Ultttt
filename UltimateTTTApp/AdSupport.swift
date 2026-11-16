@@ -28,7 +28,7 @@ final class AdManager: ObservableObject {
             ConsentInformation.shared.privacyOptionsRequirementStatus == .required
         if ConsentInformation.shared.canRequestAds {
             if !didStart {
-                MobileAds.shared.start()
+                await MobileAds.shared.start()
                 didStart = true
             }
             canShowAds = true
