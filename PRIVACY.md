@@ -1,8 +1,8 @@
-# Ultimate Tic Tac Toe — Privacy Policy
+# Ultimate Tic/Tac/Toe — Privacy Policy
 
 **Last updated: November 16, 2026**
 
-Ultimate Tic Tac Toe is an iPhone game. This policy describes information handled by the app and the third-party services it uses.
+Ultimate Tic/Tac/Toe is an iPhone game. This policy describes information handled by the app and the third-party services it uses.
 
 ## Game progress
 
@@ -26,7 +26,7 @@ If a verified Remove Ads purchase is active, the game does not request banner ad
 
 ## Notifications
 
-Game Center provides online turn notifications. Ultimate Tic Tac Toe does not operate its own notification service.
+Game Center provides online turn notifications. Ultimate Tic/Tac/Toe does not operate its own notification service.
 
 ## Information retention and removal
 
@@ -36,7 +36,7 @@ The developer does not sell its local game-history records to outside companies.
 
 ## Families
 
-Ultimate Tic Tac Toe is a general-audience strategy game. Apple Game Center and Google advertising are subject to their own age and eligibility requirements. Parents can manage Game Center interactions and other app settings through Apple's parental controls.
+Ultimate Tic/Tac/Toe is a general-audience strategy game. Apple Game Center and Google advertising are subject to their own age and eligibility requirements. Parents can manage Game Center interactions and other app settings through Apple's parental controls.
 
 ## Contact
 

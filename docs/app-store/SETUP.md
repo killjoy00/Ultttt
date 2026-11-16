@@ -1,10 +1,10 @@
-# App Store setup: Ultimate Tic Tac Toe
+# App Store setup: Ultimate Tic/Tac/Toe
 
 ## App identity
 
 | Field | Value |
 | --- | --- |
-| App | Ultimate Tic Tac Toe |
+| App | Ultimate Tic/Tac/Toe |
 | Platform | iOS |
 | Bundle ID | com.killjoy00.ultttt |
 | Version | 1.0.0 |
@@ -14,7 +14,7 @@
 | Suggested second category | Strategy |
 | Price | Free with optional one-time Remove Ads |
 
-The public app name may need adjustment if another developer has reserved it; do not change the bundle ID to work around a name conflict.
+The user created the App Store Connect app as Ultimate Tic/Tac/Toe because the original name was unavailable. Keep the bundle ID unchanged.
 
 ## Apple Developer and App Store Connect
 
