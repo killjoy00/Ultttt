@@ -619,7 +619,7 @@ private struct WinningLineOverlay: View {
     }
 }
 
-private struct NewGameSheet: View {
+struct NewGameSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedMode: GameMode
     @State private var selectedDifficulty: Difficulty
