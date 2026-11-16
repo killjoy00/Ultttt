@@ -11,7 +11,20 @@ struct UltimateTTTApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(
+            #if DEBUG
+            if let scenario = Self.storeScreenshotScenario {
+                AppStoreScreenshotHost(scenario: scenario)
+            } else {
+                normalGame
+            }
+            #else
+            normalGame
+            #endif
+        }
+    }
+
+    private var normalGame: some View {
+        ContentView(
                 session: session,
                 gameCenter: gameCenter,
                 purchases: purchases,
@@ -27,6 +40,16 @@ struct UltimateTTTApp: App {
                     await ads.prepare()
                 }
             }
-        }
     }
+
+    #if DEBUG
+    private static var storeScreenshotScenario: String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "-UltimateStoreScreenshot"),
+              args.indices.contains(index + 1) else { return nil }
+        let option = args[index + 1]
+        return ["board", "setup", "tutorial", "statistics", "settings"].contains(option)
+            ? option : nil
+    }
+    #endif
 }

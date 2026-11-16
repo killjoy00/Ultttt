@@ -57,6 +57,27 @@ final class GameSession: ObservableObject {
         }
     }
 
+    #if DEBUG
+    /// Only used for App Store capture on an isolated iOS simulator.
+    /// Every move is applied through the shipping rules engine.
+    func prepareStoreScreenshot() {
+        gameID = UUID()
+        mode = .twoPlayer
+        difficulty = .medium
+        isThinking = false
+        scores = MatchScores(xWins: 1, oWins: 1, draws: 0)
+        var demo = UltimateGame()
+        let preferredCells = [4, 0, 8, 2, 6, 1, 7, 3, 5, 4, 2, 8, 0, 6, 3, 1, 5]
+        for cell in preferredCells {
+            let options = demo.legalMoves
+            guard let move = options.first(where: { $0.cell == cell }) ?? options.first else { break }
+            guard demo.play(move) else { break }
+        }
+        game = demo
+        // Never write screenshot fixtures to normal user defaults.
+    }
+    #endif
+
     func startNewGame(mode: GameMode, difficulty: Difficulty) {
         gameID = UUID()
         isThinking = false
