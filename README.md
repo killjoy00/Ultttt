@@ -1,6 +1,6 @@
 # Ultimate Tic Tac Toe for iPhone
 
-Native SwiftUI Ultimate Tic Tac Toe, targeting iOS 17+.
+Native SwiftUI Ultimate Tic Tac Toe, targeting iOS 17+. Light, dark, and Follow iPhone appearance options are available in the game's More → Appearance menu; the setting is saved on-device.
 
 ## Play
 

@@ -6,6 +6,7 @@ struct UltimateTTTApp: App {
     @StateObject private var gameCenter = GameCenterManager()
     @StateObject private var purchases = PurchaseManager()
     @StateObject private var ads = AdManager()
+    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system.rawValue
 
     var body: some Scene {
         WindowGroup {
@@ -15,6 +16,7 @@ struct UltimateTTTApp: App {
                 purchases: purchases,
                 ads: ads
             )
+            .preferredColorScheme(AppearancePreference(rawValue: appearance)?.colorScheme)
             .task {
                 gameCenter.configureAuthentication()
                 // Check StoreKit before starting any ad SDK or requesting consent.
