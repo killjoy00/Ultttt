@@ -47,8 +47,8 @@ enum GameStyle {
     static let cell = adaptive(light: 0xE5EDEF, dark: 0x2E394A)
     static let text = adaptive(light: 0x172B34, dark: 0xF2F7FC)
     static let muted = adaptive(light: 0x526771, dark: 0xAABCCA)
-    static let x = adaptive(light: 0x087C77, dark: 0x6EDFD8)
-    static let o = adaptive(light: 0xB85436, dark: 0xFFAE86)
+    static let x = adaptive(light: 0x06716D, dark: 0x6EDFD8)
+    static let o = adaptive(light: 0xAB482B, dark: 0xFFAE86)
     static let outline = adaptive(light: 0x163441, dark: 0xFFFFFF, lightAlpha: 0.15, darkAlpha: 0.105)
     static let shadow = adaptive(light: 0x1A2B33, dark: 0x000000, lightAlpha: 0.07, darkAlpha: 0.20)
 
