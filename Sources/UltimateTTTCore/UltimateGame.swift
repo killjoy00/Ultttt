@@ -49,6 +49,18 @@ public struct UltimateGame: Codable, Equatable, Sendable {
 
     public var boardResults: [GameResult] { cells.map(Self.result) }
 
+    /// The three squares that completed a small-board win, if there is one.
+    public static func winningLine(in cells: [Mark?]) -> [Int]? {
+        guard cells.count == 9 else { return nil }
+        return lines.first { line in
+            if let mark = cells[line[0]] {
+                return cells[line[1]] == mark && cells[line[2]] == mark
+            }
+            return false
+        }
+    }
+
+
     public var result: GameResult {
         let owners = boardResults.map { result -> Mark? in
             if case .won(let mark) = result { return mark }

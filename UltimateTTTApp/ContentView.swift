@@ -6,11 +6,16 @@ struct ContentView: View {
     @ObservedObject var gameCenter: GameCenterManager
     @ObservedObject var purchases: PurchaseManager
     @ObservedObject var ads: AdManager
-    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system.rawValue
+    @ObservedObject var statistics: GameStatisticsStore
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var showingNewGame = false
     @State private var showingRules = false
     @State private var showingShop = false
+    @State private var showingTutorial = false
+    @State private var showingStatistics = false
+    @State private var showingSettings = false
+    @State private var showingReplay = false
 
     private var online: Bool { gameCenter.isOnline }
     private var displayedGame: UltimateGame { gameCenter.game ?? session.game }
@@ -37,6 +42,23 @@ struct ContentView: View {
                 }
 
                 gameActions
+                if displayedGame.result.isFinished {
+                    Button { showingReplay = true } label: {
+                        Label("Watch the game replay", systemImage: "play.rectangle")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(GameStyle.x)
+                            .frame(maxWidth: .infinity).padding(.top, 4)
+                    }
+                    .buttonStyle(.plain)
+                } else if !online && session.game.moves.isEmpty {
+                    Button { showingTutorial = true } label: {
+                        Label("New here? Try the tutorial", systemImage: "hand.tap")
+                            .font(.subheadline)
+                            .foregroundStyle(GameStyle.muted)
+                            .frame(maxWidth: .infinity).padding(.top, 4)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .frame(maxWidth: 520)
             .padding(.horizontal, 16)
@@ -69,6 +91,14 @@ struct ContentView: View {
         .sheet(isPresented: $showingShop) {
             RemoveAdsSheet(purchases: purchases, ads: ads)
         }
+        .sheet(isPresented: $showingTutorial) { TutorialSheet() }
+        .sheet(isPresented: $showingStatistics) {
+            StatisticsSheet(statistics: statistics) { gameCenter.showLeaderboards() }
+        }
+        .sheet(isPresented: $showingSettings) { GameSettingsSheet() }
+        .sheet(isPresented: $showingReplay) {
+            MatchReplaySheet(game: displayedGame)
+        }
         .alert("Game Center", isPresented: Binding(
             get: { gameCenter.errorMessage != nil },
             set: { if !$0 { gameCenter.errorMessage = nil } }
@@ -78,8 +108,18 @@ struct ContentView: View {
             Text(gameCenter.errorMessage ?? "")
         }
         .onAppear {
+            gameCenter.statistics = statistics
             session.onSoloWin = { gameCenter.achievements.recordSoloWin() }
+            session.onSoloGameFinished = { id, result, difficulty, moves in
+                statistics.recordSolo(id: id, result: result, difficulty: difficulty, moves: moves)
+            }
+            session.onSoloGameReopened = { id in statistics.reopenSolo(id: id) }
+            session.recordCompletedGameIfNeeded()
             session.resumeComputerTurn()
+            gameCenter.refreshTurnCounts()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { gameCenter.refreshTurnCounts() }
         }
     }
 
@@ -107,20 +147,15 @@ struct ContentView: View {
             Spacer(minLength: 8)
 
             Menu {
-                Button("How to play", systemImage: "questionmark.circle") { showingRules = true }
+                Button("Interactive tutorial", systemImage: "hand.tap") { showingTutorial = true }
+                Button("Quick rules", systemImage: "questionmark.circle") { showingRules = true }
+                Button("Statistics", systemImage: "chart.bar") { showingStatistics = true }
+                Button("Leaderboards", systemImage: "list.number") { gameCenter.showLeaderboards() }
                 Button("Achievements", systemImage: "trophy") { gameCenter.showAchievements() }
                 Button(purchases.adsRemoved ? "Ads removed" : "Remove ads", systemImage: "cart") {
                     showingShop = true
                 }
-                Menu {
-                    Picker("Appearance", selection: $appearance) {
-                        Label("Follow iPhone", systemImage: "iphone").tag(AppearancePreference.system.rawValue)
-                        Label("Light", systemImage: "sun.max").tag(AppearancePreference.light.rawValue)
-                        Label("Dark", systemImage: "moon.stars").tag(AppearancePreference.dark.rawValue)
-                    }
-                } label: {
-                    Label("Appearance", systemImage: "circle.lefthalf.filled")
-                }
+                Button("Settings", systemImage: "gearshape") { showingSettings = true }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 19, weight: .semibold))
@@ -173,7 +208,8 @@ struct ContentView: View {
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: online ? "iphone" : "person.2.fill")
-                    Text(online ? "Local game" : "Play online")
+                    Text(online ? "Local game" :
+                         gameCenter.yourTurnCount > 0 ? "Your turn ((gameCenter.yourTurnCount))" : "Play online")
                 }
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(GameStyle.onAccent)
@@ -283,7 +319,7 @@ struct ContentView: View {
            displayedGame.legalBoards == [destination] {
             return "Play in the \(BoardPosition.names[destination]) board."
         }
-        return displayedGame.moves.isEmpty ? "Choose any square to begin." : "Play in any open board."
+        return displayedGame.moves.isEmpty ? "Choose any square to begin." : "Free choice — play in any open board."
     }
 
     private var scoreboard: some View {
@@ -342,11 +378,23 @@ struct ContentView: View {
     private var gameActions: some View {
         HStack(spacing: 10) {
             if online {
-                actionButton("Refresh", icon: "arrow.clockwise", prominent: false, enabled: true) {
-                    gameCenter.refresh()
-                }
-                actionButton("Matches", icon: "person.2", prominent: true, enabled: true) {
-                    gameCenter.playOnline()
+                if gameCenter.currentMatch?.status == .ended {
+                    actionButton("Matches", icon: "person.2", prominent: false, enabled: true) {
+                        gameCenter.playOnline()
+                    }
+                    actionButton(
+                        gameCenter.isRematching ? "Starting…" : "Rematch",
+                        icon: "arrow.triangle.2.circlepath", prominent: true,
+                        enabled: !gameCenter.isRematching
+                    ) { gameCenter.rematch() }
+                } else {
+                    actionButton("Refresh", icon: "arrow.clockwise", prominent: false, enabled: true) {
+                        gameCenter.refresh()
+                        gameCenter.refreshTurnCounts()
+                    }
+                    actionButton("Matches", icon: "person.2", prominent: true, enabled: true) {
+                        gameCenter.playOnline()
+                    }
                 }
             } else {
                 actionButton(
@@ -398,7 +446,7 @@ private enum BoardPosition {
     ]
 }
 
-private struct UltimateBoardView: View {
+struct UltimateBoardView: View {
     let game: UltimateGame
     let canInteract: Bool
     let onSelect: (Int, Int) -> Void
@@ -414,7 +462,7 @@ private struct UltimateBoardView: View {
                             cells: game.cells[index],
                             result: game.boardResults[index],
                             canInteract: canInteract && game.legalBoards.contains(index),
-                            isForced: canInteract && game.legalBoards == [index],
+                            isForced: game.legalBoards == [index],
                             lastCell: game.moves.last?.board == index ? game.moves.last?.cell : nil,
                             onSelect: { onSelect(index, $0) }
                         )
@@ -451,82 +499,123 @@ private struct MiniBoardView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(isForced ? GameStyle.x.opacity(0.13) : GameStyle.tile)
+                .fill(backgroundColor)
 
-            switch result {
-            case .won(let mark):
-                GeometryReader { geometry in
-                    Text(mark.symbol)
-                        .font(.system(size: geometry.size.width * 0.66, weight: .black, design: .rounded))
-                        .foregroundStyle(GameStyle.color(for: mark))
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                }
-                .accessibilityLabel("\(mark.symbol) won \(BoardPosition.names[index])")
-
-            case .drawn:
-                Image(systemName: "minus")
-                    .font(.system(size: 31, weight: .bold, design: .rounded))
-                    .foregroundStyle(GameStyle.muted)
-                    .accessibilityLabel("Drawn board")
-
-            case .ongoing:
-                VStack(spacing: 2.5) {
-                    ForEach(0..<3, id: \.self) { row in
-                        HStack(spacing: 2.5) {
-                            ForEach(0..<3, id: \.self) { column in
-                                let cell = row * 3 + column
-                                Button {
-                                    onSelect(cell)
-                                } label: {
-                                    GeometryReader { geometry in
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                                                .fill(GameStyle.cell.opacity(cells[cell] == nil ? 0.66 : 1.0))
-                                            if let mark = cells[cell] {
-                                                Text(mark.symbol)
-                                                    .font(.system(
-                                                        size: geometry.size.width * 0.70,
-                                                        weight: .bold,
-                                                        design: .rounded
-                                                    ))
-                                                    .foregroundStyle(GameStyle.color(for: mark))
-                                            }
-                                        }
-                                        .overlay {
-                                            if lastCell == cell {
-                                                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                                                    .strokeBorder(GameStyle.text.opacity(0.55), lineWidth: 1.5)
-                                            }
+            // Keep every played square visible after a small board is won.
+            VStack(spacing: 2.5) {
+                ForEach(0..<3, id: \.self) { row in
+                    HStack(spacing: 2.5) {
+                        ForEach(0..<3, id: \.self) { column in
+                            let cell = row * 3 + column
+                            Button {
+                                onSelect(cell)
+                            } label: {
+                                GeometryReader { geometry in
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                            .fill(GameStyle.cell.opacity(cells[cell] == nil ? 0.66 : 1.0))
+                                        if let mark = cells[cell] {
+                                            Text(mark.symbol)
+                                                .font(.system(
+                                                    size: geometry.size.width * 0.70,
+                                                    weight: .bold,
+                                                    design: .rounded
+                                                ))
+                                                .foregroundStyle(GameStyle.color(for: mark))
                                         }
                                     }
-                                    .aspectRatio(1, contentMode: .fit)
+                                    .overlay {
+                                        if lastCell == cell {
+                                            RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                                .strokeBorder(GameStyle.text.opacity(0.6), lineWidth: 1.5)
+                                        }
+                                    }
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(!canInteract || cells[cell] != nil)
-                                .accessibilityLabel(
-                                    "\(BoardPosition.names[index]) board, \(BoardPosition.names[cell]) square, " +
-                                    "\(cells[cell]?.symbol ?? "empty")"
-                                )
-                                .accessibilityHint(
-                                    canInteract && cells[cell] == nil ? "Double tap to place a mark" : "Unavailable"
-                                )
-                                .accessibilityIdentifier("board-\(index)-cell-\(cell)")
+                                .aspectRatio(1, contentMode: .fit)
                             }
+                            .buttonStyle(.plain)
+                            .disabled(!canInteract || result != .ongoing || cells[cell] != nil)
+                            .accessibilityLabel(
+                                "\(BoardPosition.names[index]) board, \(BoardPosition.names[cell]) square, " +
+                                "\(cells[cell]?.symbol ?? "empty")"
+                            )
+                            .accessibilityHint(
+                                canInteract && result == .ongoing && cells[cell] == nil
+                                    ? "Double tap to place a mark" : "Unavailable"
+                            )
+                            .accessibilityIdentifier("board-\(index)-cell-\(cell)")
                         }
                     }
                 }
-                .padding(5)
+            }
+            .padding(5)
+
+            if case .won(let mark) = result {
+                WinningLineOverlay(line: UltimateGame.winningLine(in: cells), mark: mark)
+                    .padding(5)
+                    .allowsHitTesting(false)
             }
         }
         .overlay {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .strokeBorder(
-                    isForced ? GameStyle.x : GameStyle.outline.opacity(0.67),
-                    lineWidth: isForced ? 2 : 1
-                )
+                .strokeBorder(borderColor, lineWidth: result == .ongoing ? (isForced ? 2.5 : 1) : 3)
         }
+        .shadow(color: isForced ? GameStyle.x.opacity(0.24) : .clear, radius: isForced ? 6 : 0)
+        .animation(.easeOut(duration: 0.22), value: isForced)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(BoardPosition.names[index]) board")
+        .accessibilityLabel("\(BoardPosition.names[index]) board, \(boardDescription)")
+    }
+
+    private var backgroundColor: Color {
+        switch result {
+        case .won(let mark): return GameStyle.color(for: mark).opacity(0.11)
+        case .drawn: return GameStyle.muted.opacity(0.12)
+        case .ongoing: return isForced ? GameStyle.x.opacity(0.13) : GameStyle.tile
+        }
+    }
+
+    private var borderColor: Color {
+        switch result {
+        case .won(let mark): return GameStyle.color(for: mark)
+        case .drawn: return GameStyle.muted.opacity(0.5)
+        case .ongoing: return isForced ? GameStyle.x : GameStyle.outline
+        }
+    }
+
+    private var boardDescription: String {
+        switch result {
+        case .won(let mark): return "won by \(mark.symbol)"
+        case .drawn: return "drawn"
+        case .ongoing: return isForced ? "required destination" : "unfinished"
+        }
+    }
+}
+
+private struct WinningLineOverlay: View {
+    let line: [Int]?
+    let mark: Mark
+
+    var body: some View {
+        GeometryReader { geometry in
+            if let line, line.count == 3 {
+                Path { path in
+                    let gap: CGFloat = 2.5
+                    let width = (geometry.size.width - gap * 2) / 3
+                    func center(_ index: Int) -> CGPoint {
+                        CGPoint(
+                            x: CGFloat(index % 3) * (width + gap) + width / 2,
+                            y: CGFloat(index / 3) * (width + gap) + width / 2
+                        )
+                    }
+                    path.move(to: center(line[0]))
+                    path.addLine(to: center(line[2]))
+                }
+                .stroke(
+                    GameStyle.color(for: mark).opacity(0.78),
+                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                )
+            }
+        }
     }
 }
 
@@ -657,7 +746,8 @@ private struct RulesSheet: View {
         session: GameSession(),
         gameCenter: GameCenterManager(),
         purchases: PurchaseManager(),
-        ads: AdManager()
+        ads: AdManager(),
+        statistics: GameStatisticsStore()
     )
     .preferredColorScheme(.light)
 }
@@ -667,7 +757,8 @@ private struct RulesSheet: View {
         session: GameSession(),
         gameCenter: GameCenterManager(),
         purchases: PurchaseManager(),
-        ads: AdManager()
+        ads: AdManager(),
+        statistics: GameStatisticsStore()
     )
     .preferredColorScheme(.dark)
 }

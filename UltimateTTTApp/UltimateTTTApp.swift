@@ -6,6 +6,7 @@ struct UltimateTTTApp: App {
     @StateObject private var gameCenter = GameCenterManager()
     @StateObject private var purchases = PurchaseManager()
     @StateObject private var ads = AdManager()
+    @StateObject private var statistics = GameStatisticsStore()
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system.rawValue
 
     var body: some Scene {
@@ -14,7 +15,8 @@ struct UltimateTTTApp: App {
                 session: session,
                 gameCenter: gameCenter,
                 purchases: purchases,
-                ads: ads
+                ads: ads,
+                statistics: statistics
             )
             .preferredColorScheme(AppearancePreference(rawValue: appearance)?.colorScheme)
             .task {

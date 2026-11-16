@@ -12,11 +12,14 @@ final class GameCenterManager: NSObject, ObservableObject {
     @Published private(set) var localMark: Mark?
     @Published private(set) var isMyTurn = false
     @Published private(set) var isSubmitting = false
+    @Published private(set) var isRematching = false
+    @Published private(set) var yourTurnCount = 0
     @Published var errorMessage: String?
 
     private var didConfigureAuthentication = false
     private var showMatchmakerWhenReady = false
     let achievements = AchievementTracker()
+    weak var statistics: GameStatisticsStore?
 
     var isOnline: Bool { currentMatch != nil }
     var canPlay: Bool {
@@ -38,6 +41,8 @@ final class GameCenterManager: NSObject, ObservableObject {
                 if self.isAuthenticated {
                     GKLocalPlayer.local.register(self)
                     await self.achievements.reportProgress()
+                    self.statistics?.syncOnlineLeaderboard()
+                    self.refreshTurnCounts()
                     if self.showMatchmakerWhenReady {
                         self.showMatchmakerWhenReady = false
                         self.presentMatchmaker()
@@ -71,11 +76,70 @@ final class GameCenterManager: NSObject, ObservableObject {
         Self.visibleController()?.present(controller, animated: true)
     }
 
+    func showLeaderboards() {
+        guard isAuthenticated else {
+            errorMessage = "Sign in to Game Center to view the leaderboard."
+            return
+        }
+        let controller = GKGameCenterViewController(state: .leaderboards)
+        controller.gameCenterDelegate = self
+        Self.visibleController()?.present(controller, animated: true)
+    }
+
+    /// Game Center handles system push notifications for turn events.
+    /// This count keeps those turn events visible while the game is open.
+    func refreshTurnCounts() {
+        guard GKLocalPlayer.local.isAuthenticated else {
+            yourTurnCount = 0
+            return
+        }
+        Task {
+            do {
+                let matches = try await GKTurnBasedMatch.loadMatches()
+                let playerID = GKLocalPlayer.local.gamePlayerID
+                yourTurnCount = matches.filter {
+                    $0.status == .open && $0.currentParticipant?.player?.gamePlayerID == playerID
+                }.count
+                // Completed matches can arrive while the app is closed.
+                // Import unseen results without replacing the visible board.
+                for match in matches where match.status == .ended {
+                    if statistics?.hasOnlineResult(matchID: match.matchID) == false {
+                        await recordCompletedOutcome(match)
+                    }
+                }
+            } catch {
+                // Offline or signed out: keep the last known count.
+            }
+        }
+    }
+
+    func rematch() {
+        guard let matchID = currentMatch?.matchID,
+              currentMatch?.status == .ended, !isRematching else { return }
+        isRematching = true
+        Task {
+            defer { isRematching = false }
+            do {
+                let match = try await GKTurnBasedMatch.load(withID: matchID)
+                guard match.status == .ended else {
+                    await loadMatch(id: matchID)
+                    return
+                }
+                let next = try await match.rematch()
+                await loadMatch(id: next.matchID)
+                refreshTurnCounts()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     func closeOnlineBoard() {
         currentMatch = nil
         game = nil
         localMark = nil
         isMyTurn = false
+        refreshTurnCounts()
         // The match stays in Game Center and can be resumed later.
     }
 
@@ -107,6 +171,7 @@ final class GameCenterManager: NSObject, ObservableObject {
                     return
                 }
 
+                let previousBoard = payload.game.boardResults[board]
                 var next = payload.game
                 guard next.play(Move(board: board, cell: cell)) else { return }
                 let updated = try TurnBasedPayload(game: next).encoded()
@@ -136,6 +201,14 @@ final class GameCenterManager: NSObject, ObservableObject {
                     )
                 }
                 await loadMatch(id: id)
+                if next.result.isFinished {
+                    GameFeedback.shared.play(.gameWon)
+                } else if previousBoard == .ongoing && next.boardResults[board].isFinished {
+                    GameFeedback.shared.play(.boardWon)
+                } else {
+                    GameFeedback.shared.play(.move)
+                }
+                refreshTurnCounts()
             } catch {
                 errorMessage = error.localizedDescription
                 await loadMatch(id: id)
@@ -173,12 +246,47 @@ final class GameCenterManager: NSObject, ObservableObject {
             localMark = index == 0 ? .x : .o
             isMyTurn = match.status == .open &&
                 match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
-            if case .won(let winner) = payload.game.result,
-               localMark == winner, match.status == .ended {
-                achievements.recordOnlineWin(matchID: match.matchID)
+            if match.status == .ended {
+                await recordCompletedOutcome(match, game: payload.game)
             }
+            refreshTurnCounts()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func recordCompletedOutcome(_ match: GKTurnBasedMatch, game knownGame: UltimateGame? = nil) async {
+        guard statistics?.hasOnlineResult(matchID: match.matchID) == false,
+              let index = match.participants.firstIndex(where: {
+                  $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+              }) else { return }
+        do {
+            let completed: UltimateGame
+            if let knownGame {
+                completed = knownGame
+            } else {
+                let payload = try TurnBasedPayload.decoded(from: try await match.loadMatchData())
+                completed = payload.game
+            }
+
+            let outcome: PlayedOutcome
+            switch completed.result {
+            case .won(let winner):
+                outcome = winner == (index == 0 ? Mark.x : Mark.o) ? .win : .loss
+            case .drawn: outcome = .draw
+            case .ongoing:
+                // A forfeit or disconnected match can end without a full board.
+                switch match.participants[index].matchOutcome {
+                case .won: outcome = .win
+                case .lost, .quit: outcome = .loss
+                case .tied: outcome = .draw
+                default: return
+                }
+            }
+            statistics?.recordOnline(matchID: match.matchID, outcome: outcome, moves: completed.moves.count)
+            if outcome == .win { achievements.recordOnlineWin(matchID: match.matchID) }
+        } catch {
+            // Retry the result when Game Center delivers another update.
         }
     }
 
@@ -227,6 +335,7 @@ extension GameCenterManager: GKLocalPlayerListener, GKTurnBasedEventListener {
             if didBecomeActive || self.currentMatch?.matchID == match.matchID {
                 await self.loadMatch(id: match.matchID)
             }
+            self.refreshTurnCounts()
         }
     }
 
@@ -235,7 +344,10 @@ extension GameCenterManager: GKLocalPlayerListener, GKTurnBasedEventListener {
             guard let self else { return }
             if self.currentMatch?.matchID == match.matchID {
                 await self.loadMatch(id: match.matchID)
+            } else {
+                await self.recordCompletedOutcome(match)
             }
+            self.refreshTurnCounts()
         }
     }
 }
