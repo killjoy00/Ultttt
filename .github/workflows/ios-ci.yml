@@ -6,7 +6,7 @@ on:
 jobs:
   rules-tests:
     name: Game rules tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: swift-actions/setup-swift@v2
@@ -16,7 +16,7 @@ jobs:
 
   simulator-build:
     name: iPhone simulator build
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
