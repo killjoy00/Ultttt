@@ -7,7 +7,7 @@
 | App | Ultimate Tic/Tac/Toe |
 | Platform | iOS |
 | Bundle ID | com.killjoy00.ultttt |
-| Version | 1.0.0 |
+| Version | 1.0 |
 | SKU (private suggested value) | ULTTTT-IOS-001 |
 | Primary language | English (U.S.) |
 | Category | Games → Board |
