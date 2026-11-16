@@ -65,6 +65,16 @@ final class UltimateGameTests: XCTestCase {
         XCTAssertTrue(game.moves.isEmpty)
     }
 
+    func testWinningLineIdentifiesTheActualThreeSquares() {
+        let horizontal: [Mark?] = [.o, .o, .o, nil, .x, nil, nil, nil, .x]
+        let diagonal: [Mark?] = [.x, .o, nil, .o, .x, nil, nil, nil, .x]
+        let unfinished: [Mark?] = [.x, .o, nil, nil, nil, nil, nil, nil, nil]
+        XCTAssertEqual(UltimateGame.winningLine(in: horizontal), [0, 1, 2])
+        XCTAssertEqual(UltimateGame.winningLine(in: diagonal), [0, 4, 8])
+        XCTAssertNil(UltimateGame.winningLine(in: unfinished))
+        XCTAssertNil(UltimateGame.winningLine(in: []))
+    }
+
     func testComputerAlwaysChoosesLegalMove() {
         var game = UltimateGame()
         _ = game.play(Move(board: 4, cell: 4))
