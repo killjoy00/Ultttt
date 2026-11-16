@@ -7,55 +7,85 @@ struct RemoveAdsSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    if purchases.adsRemoved {
-                        Label("Ads removed", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                        Text("Thanks for supporting Ultimate Tic Tac Toe. Your purchase is linked to your Apple Account.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("A one-time purchase removes banner ads. Online play and achievements remain free.")
-                            .font(.subheadline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Image(systemName: purchases.adsRemoved ? "checkmark.shield.fill" : "rectangle.slash")
+                        .font(.system(size: 27, weight: .medium))
+                        .foregroundStyle(GameStyle.x)
+                        .frame(width: 62, height: 62)
+                        .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 19))
+
+                    Text(purchases.adsRemoved ? "Ads removed" : "Play without ads.")
+                        .font(.system(size: 29, weight: .bold, design: .rounded))
+                        .foregroundStyle(GameStyle.text)
+
+                    Text(purchases.adsRemoved
+                         ? "Your purchase is active. No banner ads will be shown."
+                         : "One purchase removes banner ads for good. Every game mode stays free.")
+                        .font(.body)
+                        .foregroundStyle(GameStyle.muted)
+
+                    if !purchases.adsRemoved {
                         if let product = purchases.product {
                             Button {
                                 Task { await purchases.buyRemoveAds() }
                             } label: {
                                 HStack {
-                                    Label("Remove ads", systemImage: "cart")
+                                    Text(purchases.isPurchasing ? "Processing…" : "Remove ads")
                                     Spacer()
                                     Text(product.displayPrice)
                                 }
+                                .font(.headline)
+                                .foregroundStyle(GameStyle.background)
+                                .padding(.horizontal, 18)
+                                .frame(height: 52)
+                                .background(GameStyle.x, in: RoundedRectangle(cornerRadius: 14))
                             }
+                            .buttonStyle(.plain)
                             .disabled(purchases.isPurchasing)
                         } else {
-                            Text("Remove Ads will be available after the product is configured in App Store Connect.")
-                                .foregroundStyle(.secondary)
-                                .font(.footnote)
+                            Text("Purchases are unavailable right now.")
+                                .font(.subheadline)
+                                .foregroundStyle(GameStyle.muted)
+                                .padding(16)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 14))
                         }
                     }
-                    Button("Restore purchases") {
-                        Task { await purchases.restorePurchases() }
-                    }
-                } header: {
-                    Text("Remove ads")
-                }
 
-                if ads.privacyOptionsRequired {
-                    Section("Privacy") {
+                    Button {
+                        Task { await purchases.restorePurchases() }
+                    } label: {
+                        Text("Restore purchases")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(GameStyle.text)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 45)
+                            .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    if ads.privacyOptionsRequired {
                         Button("Advertising privacy choices") {
                             Task { await ads.showPrivacyOptions() }
                         }
+                        .font(.subheadline)
+                        .foregroundStyle(GameStyle.muted)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    }
+
+                    if let error = purchases.errorMessage ?? ads.errorMessage {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(GameStyle.o)
+                            .padding(.top, 2)
                     }
                 }
-                if let error = purchases.errorMessage ?? ads.errorMessage {
-                    Section {
-                        Text(error).foregroundStyle(.red).font(.footnote)
-                    }
-                }
+                .padding(24)
             }
-            .navigationTitle("Purchases & privacy")
+            .scrollIndicators(.hidden)
+            .background(GameStyle.background.ignoresSafeArea())
+            .navigationTitle("Remove ads")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
