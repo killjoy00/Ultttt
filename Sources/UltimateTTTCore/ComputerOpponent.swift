@@ -21,11 +21,10 @@ public enum ComputerOpponent {
         if difficulty == .medium {
             // Some variety prevents the medium opponent from always finding
             // the best move, while still favoring better board positions.
-            return legal.max { left, right in
-                let a = evaluatedMove(left, in: game) + Double.random(in: -7...7)
-                let b = evaluatedMove(right, in: game) + Double.random(in: -7...7)
-                return a < b
+            let options = legal.map { move in
+                (move: move, score: evaluatedMove(move, in: game) + Double.random(in: -7...7))
             }
+            return options.max(by: { $0.score < $1.score })?.move
         }
 
         // Searching every branch of a free turn is exponential. Keep the most
