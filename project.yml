@@ -29,7 +29,7 @@ targets:
     info:
       path: UltimateTTTApp/Info.plist
       properties:
-        CFBundleDisplayName: Ultimate Tic Tac Toe
+        CFBundleDisplayName: Ultimate Tic/Tac/Toe
         UILaunchScreen: {}
         GADApplicationIdentifier: ca-app-pub-3940256099942544~1458002511
         SKAdNetworkItems:
@@ -38,6 +38,7 @@ targets:
           - UIInterfaceOrientationPortrait
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.killjoy00.ultttt
         SWIFT_VERSION: 5.9
         TARGETED_DEVICE_FAMILY: "1"

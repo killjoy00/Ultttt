@@ -1,6 +1,6 @@
-# Ultimate Tic Tac Toe for iPhone
+# Ultimate Tic/Tac/Toe for iPhone
 
-Native SwiftUI Ultimate Tic Tac Toe, targeting iOS 17+. Light, dark, and Follow iPhone appearance options are available in the game's More → Appearance menu; the setting is saved on-device.
+Native SwiftUI Ultimate Tic/Tac/Toe, targeting iOS 17+. Light, dark, and Follow iPhone appearance options are available in the game's More → Appearance menu; the setting is saved on-device.
 
 ## Play
 
@@ -23,8 +23,9 @@ Statistics begin tracking at installation of this version. Solo results are reco
 
 ## Development
 
-Use Xcode 26.2 or newer and XcodeGen, then run the following:
+Use Xcode 26 or newer and XcodeGen, then run the following:
 
+    swift tools/generate-app-icon.swift
     xcodegen generate
     open UltimateTTT.xcodeproj
     swift test
@@ -44,7 +45,7 @@ The GitHub Actions workflow runs rules tests on Linux and an unsigned simulator 
 3. **StoreKit**: create a non-consumable product named Remove Ads with product ID **com.killjoy00.ultttt.remove_ads**. Set its price and localization in App Store Connect; test verified purchase, cancellation, restoration and revocation.
 4. **AdMob**: create the iOS app and an actual banner ad unit. Replace the **Google test app ID** in project.yml and **Google test banner ad unit ID** in UltimateTTTApp/AdSupport.swift. Test IDs never earn revenue and must not ship.
 5. **Privacy**: configure Google UMP consent messages. Complete required privacy disclosures, privacy policy, SKAdNetwork IDs and any ATT disclosures applicable to the chosen ad configuration. Ads are withheld until UMP allows requesting them.
-6. **QA and release**: create a 1024x1024 icon, verify matches and rematches using two separate Game Center accounts/devices (foreground/background/terminated with Game Center notifications enabled), inspect tutorial and replay in both appearances, test each AI difficulty, switch sounds/haptics on and off, verify stats/leaderboard submission, test StoreKit sandbox purchase and restore, and produce a signed TestFlight archive.
+6. **QA and release**: generate and inspect the 1024x1024 icon, verify matches and rematches using two separate Game Center accounts/devices (foreground/background/terminated with Game Center notifications enabled), inspect tutorial and replay in both appearances, test each AI difficulty, switch sounds/haptics on and off, verify stats/leaderboard submission, test StoreKit sandbox purchase and restore, and produce a signed TestFlight archive.
 
 No Apple credentials, signing keys or live ad identifiers are committed to the repository.
 
@@ -66,3 +67,7 @@ No Apple credentials, signing keys or live ad identifiers are committed to the r
 ## Design choices
 
 Game Center match data is reconstructed from its move history before being displayed. The client reloads a match immediately before submitting a move to avoid overwriting another turn. Local play works offline, without Game Center or a purchase.
+
+## App Store readiness
+
+See [App Store setup](docs/app-store/SETUP.md), [store text draft](docs/app-store/en-US.json), and the [privacy policy](PRIVACY.md). The app icon is generated on CI. TestFlight signing can reuse the existing Apple credentials stored in the EZTrivia GitHub Actions runner; no signing keys belong in this repository.
