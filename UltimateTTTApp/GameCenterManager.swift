@@ -195,28 +195,32 @@ final class GameCenterManager: NSObject, ObservableObject {
 }
 
 extension GameCenterManager: GKTurnBasedMatchmakerViewControllerDelegate {
-    func turnBasedMatchmakerViewControllerWasCancelled(_ viewController: GKTurnBasedMatchmakerViewController) {
-        viewController.dismiss(animated: true)
+    nonisolated func turnBasedMatchmakerViewControllerWasCancelled(_ viewController: GKTurnBasedMatchmakerViewController) {
+        Task { @MainActor in viewController.dismiss(animated: true) }
     }
 
-    func turnBasedMatchmakerViewController(
+    nonisolated func turnBasedMatchmakerViewController(
         _ viewController: GKTurnBasedMatchmakerViewController,
         didFailWithError error: any Error
     ) {
-        viewController.dismiss(animated: true)
-        errorMessage = error.localizedDescription
+        Task { @MainActor [weak self] in
+            viewController.dismiss(animated: true)
+            self?.errorMessage = error.localizedDescription
+        }
     }
 
-    func turnBasedMatchmakerViewController(
+    nonisolated func turnBasedMatchmakerViewController(
         _ viewController: GKTurnBasedMatchmakerViewController,
         didFind match: GKTurnBasedMatch
     ) {
-        viewController.dismiss(animated: true)
-        Task { await loadMatch(id: match.matchID) }
+        Task { @MainActor [weak self] in
+            viewController.dismiss(animated: true)
+            await self?.loadMatch(id: match.matchID)
+        }
     }
 }
 
-extension GameCenterManager: GKTurnBasedEventListener {
+extension GameCenterManager: GKLocalPlayerListener, GKTurnBasedEventListener {
     nonisolated func player(_ player: GKPlayer, receivedTurnEventFor match: GKTurnBasedMatch, didBecomeActive: Bool) {
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -237,7 +241,7 @@ extension GameCenterManager: GKTurnBasedEventListener {
 }
 
 extension GameCenterManager: GKGameCenterControllerDelegate {
-    func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
-        gameCenterViewController.dismiss(animated: true)
+    nonisolated func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
+        Task { @MainActor in gameCenterViewController.dismiss(animated: true) }
     }
 }
