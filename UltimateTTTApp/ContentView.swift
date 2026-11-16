@@ -3,8 +3,16 @@ import UltimateTTTCore
 
 struct ContentView: View {
     @ObservedObject var session: GameSession
+    @ObservedObject var gameCenter: GameCenterManager
+    @ObservedObject var purchases: PurchaseManager
+    @ObservedObject var ads: AdManager
+
     @State private var showingNewGame = false
     @State private var showingRules = false
+    @State private var showingShop = false
+
+    private var displayedGame: UltimateGame { gameCenter.game ?? session.game }
+    private var online: Bool { gameCenter.isOnline }
 
     var body: some View {
         ZStack {
@@ -12,30 +20,102 @@ struct ContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    scoreboard
-                    status
-                    UltimateBoardView(game: session.game, canInteract: !session.isThinking) { board, cell in
-                        session.play(board: board, cell: cell)
-                    }
                     HStack(spacing: 10) {
                         Button {
-                            session.undoTurn()
+                            gameCenter.playOnline()
                         } label: {
-                            Label("Undo", systemImage: "arrow.uturn.backward")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .disabled(session.game.moves.isEmpty)
-                        .buttonStyle(.bordered)
-
-                        Button {
-                            showingNewGame = true
-                        } label: {
-                            Label("New game", systemImage: "plus")
+                            Label(online ? "Matches" : "Play online", systemImage: "person.2")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+
+                        Button {
+                            gameCenter.showAchievements()
+                        } label: {
+                            Image(systemName: "trophy")
+                                .frame(width: 36, height: 24)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Game Center achievements")
+
+                        Button {
+                            showingShop = true
+                        } label: {
+                            Image(systemName: purchases.adsRemoved ? "checkmark.shield" : "cart")
+                                .frame(width: 36, height: 24)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel(purchases.adsRemoved ? "Ads removed" : "Remove ads")
                     }
                     .controlSize(.large)
+
+                    if online {
+                        HStack {
+                            Label("Game Center match", systemImage: "gamecontroller")
+                            Spacer()
+                            if let mark = gameCenter.localMark {
+                                Text("You are \(mark.symbol)")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    } else {
+                        scoreboard
+                    }
+
+                    status
+                    UltimateBoardView(
+                        game: displayedGame,
+                        canInteract: online ? gameCenter.canPlay : !session.isThinking
+                    ) { board, cell in
+                        if online {
+                            gameCenter.submitMove(board: board, cell: cell)
+                        } else {
+                            session.play(board: board, cell: cell)
+                        }
+                    }
+
+                    if online {
+                        HStack(spacing: 10) {
+                            Button {
+                                gameCenter.refresh()
+                            } label: {
+                                Label("Refresh", systemImage: "arrow.clockwise")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                gameCenter.closeOnlineBoard()
+                            } label: {
+                                Label("Local game", systemImage: "iphone")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .controlSize(.large)
+                    } else {
+                        HStack(spacing: 10) {
+                            Button {
+                                session.undoTurn()
+                            } label: {
+                                Label("Undo", systemImage: "arrow.uturn.backward")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .disabled(session.game.moves.isEmpty)
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                showingNewGame = true
+                            } label: {
+                                Label("New game", systemImage: "plus")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .controlSize(.large)
+                    }
 
                     Button {
                         showingRules = true
@@ -53,13 +133,37 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            if ads.canShowAds && !purchases.adsRemoved {
+                AdBanner()
+                    .frame(width: 320, height: 50)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(.regularMaterial)
+                    .accessibilityLabel("Advertisement")
+            }
+        }
         .sheet(isPresented: $showingNewGame) {
             NewGameSheet(mode: session.mode, difficulty: session.difficulty) { mode, difficulty in
                 session.startNewGame(mode: mode, difficulty: difficulty)
             }
         }
         .sheet(isPresented: $showingRules) { RulesSheet() }
-        .onAppear { session.resumeComputerTurn() }
+        .sheet(isPresented: $showingShop) {
+            RemoveAdsSheet(purchases: purchases, ads: ads)
+        }
+        .alert("Game Center", isPresented: Binding(
+            get: { gameCenter.errorMessage != nil },
+            set: { if !$0 { gameCenter.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { gameCenter.errorMessage = nil }
+        } message: {
+            Text(gameCenter.errorMessage ?? "")
+        }
+        .onAppear {
+            session.onSoloWin = { gameCenter.achievements.recordSoloWin() }
+            session.resumeComputerTurn()
+        }
     }
 
     private var header: some View {
@@ -71,7 +175,8 @@ struct ContentView: View {
             Text("Tic Tac Toe")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .minimumScaleFactor(0.8)
-            Text(session.mode == .solo ? "Vs computer · \(session.difficulty.label)" : "Two players · Pass and play")
+            Text(online ? "Game Center · Online match" :
+                 session.mode == .solo ? "Vs computer · \(session.difficulty.label)" : "Two players · Pass and play")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -114,12 +219,18 @@ struct ContentView: View {
     }
 
     private var statusTitle: String {
-        switch session.game.result {
+        if online && gameCenter.isSubmitting { return "Sending move…" }
+        if online && gameCenter.currentMatch?.status == .ended && !displayedGame.result.isFinished {
+            return "Match ended"
+        }
+        switch displayedGame.result {
         case .won(let mark):
+            if online { return gameCenter.localMark == mark ? "You win!" : "Opponent wins" }
             if session.mode == .solo { return mark == .x ? "You win!" : "Computer wins" }
             return "\(mark.symbol) wins!"
         case .drawn: return "It's a draw"
         case .ongoing:
+            if online { return gameCenter.isMyTurn ? "Your turn" : "Waiting for opponent" }
             if session.isThinking { return "Computer is thinking…" }
             if session.mode == .solo { return "Your move" }
             return "\(session.game.currentPlayer.symbol)'s turn"
@@ -127,9 +238,14 @@ struct ContentView: View {
     }
 
     private var statusDetail: String {
-        if session.game.result.isFinished { return "Start a new game to play again." }
-        if let destination = session.game.forcedBoard,
-           session.game.legalBoards == [destination] {
+        if displayedGame.result.isFinished {
+            return online ? "This Game Center match is complete." : "Start a new game to play again."
+        }
+        if online && gameCenter.currentMatch?.status == .ended {
+            return "Return to your matches or start a local game."
+        }
+        if let destination = displayedGame.forcedBoard,
+           displayedGame.legalBoards == [destination] {
             return "Play in the highlighted \(BoardPosition.names[destination]) board."
         }
         return "Choose a square in any open board."

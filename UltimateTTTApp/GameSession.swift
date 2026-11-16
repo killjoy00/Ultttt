@@ -26,12 +26,15 @@ final class GameSession: ObservableObject {
 
     private let storageKey = "ultimate-ttt-session-v1"
     private var gameID = UUID()
+    private var achievementCreditedForCurrentGame = false
+    var onSoloWin: (() -> Void)?
 
     private struct SavedSession: Codable {
         let game: UltimateGame
         let mode: GameMode
         let difficulty: Difficulty
         let scores: MatchScores
+        var creditedSoloWin: Bool? = nil
     }
 
     init() {
@@ -41,6 +44,7 @@ final class GameSession: ObservableObject {
             mode = saved.mode
             difficulty = saved.difficulty
             scores = saved.scores
+            achievementCreditedForCurrentGame = saved.creditedSoloWin ?? false
         } else {
             game = UltimateGame()
             mode = .solo
@@ -52,6 +56,7 @@ final class GameSession: ObservableObject {
     func startNewGame(mode: GameMode, difficulty: Difficulty) {
         gameID = UUID()
         isThinking = false
+        achievementCreditedForCurrentGame = false
         self.mode = mode
         self.difficulty = difficulty
         game = UltimateGame()
@@ -66,6 +71,10 @@ final class GameSession: ObservableObject {
         game = next
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         if game.result.isFinished { record(game.result, change: 1) }
+        if mode == .solo, game.result == .won(.x), !achievementCreditedForCurrentGame {
+            achievementCreditedForCurrentGame = true
+            onSoloWin?()
+        }
         save()
         resumeComputerTurn()
     }
@@ -118,7 +127,8 @@ final class GameSession: ObservableObject {
     }
 
     private func save() {
-        let saved = SavedSession(game: game, mode: mode, difficulty: difficulty, scores: scores)
+        let saved = SavedSession(game: game, mode: mode, difficulty: difficulty, scores: scores,
+                                 creditedSoloWin: achievementCreditedForCurrentGame)
         if let data = try? JSONEncoder().encode(saved) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
