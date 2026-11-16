@@ -36,7 +36,7 @@ struct RemoveAdsSheet: View {
                                     Text(product.displayPrice)
                                 }
                                 .font(.headline)
-                                .foregroundStyle(GameStyle.background)
+                                .foregroundStyle(GameStyle.onAccent)
                                 .padding(.horizontal, 18)
                                 .frame(height: 52)
                                 .background(GameStyle.x, in: RoundedRectangle(cornerRadius: 14))

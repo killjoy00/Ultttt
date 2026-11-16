@@ -1,27 +1,12 @@
 import SwiftUI
 import UltimateTTTCore
 
-/// A restrained, high-contrast palette that gives the game board visual priority.
-enum GameStyle {
-    static let background = Color(red: 0.045, green: 0.071, blue: 0.113)
-    static let surface = Color(red: 0.092, green: 0.131, blue: 0.197)
-    static let board = Color(red: 0.102, green: 0.149, blue: 0.218)
-    static let tile = Color(red: 0.145, green: 0.193, blue: 0.266)
-    static let cell = Color(red: 0.180, green: 0.225, blue: 0.290)
-    static let text = Color(red: 0.950, green: 0.970, blue: 0.987)
-    static let muted = Color(red: 0.667, green: 0.737, blue: 0.796)
-    static let x = Color(red: 0.432, green: 0.877, blue: 0.848)
-    static let o = Color(red: 1.000, green: 0.683, blue: 0.527)
-    static let outline = Color.white.opacity(0.105)
-
-    static func color(for mark: Mark) -> Color { mark == .x ? x : o }
-}
-
 struct ContentView: View {
     @ObservedObject var session: GameSession
     @ObservedObject var gameCenter: GameCenterManager
     @ObservedObject var purchases: PurchaseManager
     @ObservedObject var ads: AdManager
+    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system.rawValue
 
     @State private var showingNewGame = false
     @State private var showingRules = false
@@ -63,7 +48,6 @@ struct ContentView: View {
         .background(GameStyle.background.ignoresSafeArea())
         .foregroundStyle(GameStyle.text)
         .tint(GameStyle.x)
-        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .bottom) {
             if ads.canShowAds && !purchases.adsRemoved {
                 AdBanner()
@@ -128,6 +112,15 @@ struct ContentView: View {
                 Button(purchases.adsRemoved ? "Ads removed" : "Remove ads", systemImage: "cart") {
                     showingShop = true
                 }
+                Menu {
+                    Picker("Appearance", selection: $appearance) {
+                        Label("Follow iPhone", systemImage: "iphone").tag(AppearancePreference.system.rawValue)
+                        Label("Light", systemImage: "sun.max").tag(AppearancePreference.light.rawValue)
+                        Label("Dark", systemImage: "moon.stars").tag(AppearancePreference.dark.rawValue)
+                    }
+                } label: {
+                    Label("Appearance", systemImage: "circle.lefthalf.filled")
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 19, weight: .semibold))
@@ -183,7 +176,7 @@ struct ContentView: View {
                     Text(online ? "Local game" : "Play online")
                 }
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(GameStyle.background)
+                .foregroundStyle(GameStyle.onAccent)
                 .padding(.horizontal, 15)
                 .frame(height: 40)
                 .background(GameStyle.x, in: Capsule())
@@ -381,7 +374,7 @@ struct ContentView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .frame(height: 46)
-                .foregroundStyle(prominent ? GameStyle.background : GameStyle.text)
+                .foregroundStyle(prominent ? GameStyle.onAccent : GameStyle.text)
                 .background(
                     prominent ? GameStyle.x : GameStyle.surface,
                     in: RoundedRectangle(cornerRadius: 13, style: .continuous)
@@ -439,7 +432,7 @@ private struct UltimateBoardView: View {
             RoundedRectangle(cornerRadius: 23, style: .continuous)
                 .strokeBorder(GameStyle.outline, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.20), radius: 18, x: 0, y: 9)
+        .shadow(color: GameStyle.shadow, radius: 18, x: 0, y: 9)
         .aspectRatio(1, contentMode: .fit)
         .animation(.easeOut(duration: 0.17), value: game.moves.count)
         .accessibilityIdentifier("ultimate-board")
@@ -587,7 +580,7 @@ private struct NewGameSheet: View {
                     } label: {
                         Text("Start game")
                             .font(.headline)
-                            .foregroundStyle(GameStyle.background)
+                            .foregroundStyle(GameStyle.onAccent)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(GameStyle.x, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -659,12 +652,23 @@ private struct RulesSheet: View {
 }
 
 #if DEBUG
-#Preview {
+#Preview("Light") {
     ContentView(
         session: GameSession(),
         gameCenter: GameCenterManager(),
         purchases: PurchaseManager(),
         ads: AdManager()
     )
+    .preferredColorScheme(.light)
+}
+
+#Preview("Dark") {
+    ContentView(
+        session: GameSession(),
+        gameCenter: GameCenterManager(),
+        purchases: PurchaseManager(),
+        ads: AdManager()
+    )
+    .preferredColorScheme(.dark)
 }
 #endif
