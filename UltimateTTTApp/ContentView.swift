@@ -1,6 +1,22 @@
 import SwiftUI
 import UltimateTTTCore
 
+/// A restrained, high-contrast palette that gives the game board visual priority.
+enum GameStyle {
+    static let background = Color(red: 0.045, green: 0.071, blue: 0.113)
+    static let surface = Color(red: 0.092, green: 0.131, blue: 0.197)
+    static let board = Color(red: 0.102, green: 0.149, blue: 0.218)
+    static let tile = Color(red: 0.145, green: 0.193, blue: 0.266)
+    static let cell = Color(red: 0.180, green: 0.225, blue: 0.290)
+    static let text = Color(red: 0.950, green: 0.970, blue: 0.987)
+    static let muted = Color(red: 0.667, green: 0.737, blue: 0.796)
+    static let x = Color(red: 0.432, green: 0.877, blue: 0.848)
+    static let o = Color(red: 1.000, green: 0.683, blue: 0.527)
+    static let outline = Color.white.opacity(0.105)
+
+    static func color(for mark: Mark) -> Color { mark == .x ? x : o }
+}
+
 struct ContentView: View {
     @ObservedObject var session: GameSession
     @ObservedObject var gameCenter: GameCenterManager
@@ -11,135 +27,50 @@ struct ContentView: View {
     @State private var showingRules = false
     @State private var showingShop = false
 
-    private var displayedGame: UltimateGame { gameCenter.game ?? session.game }
     private var online: Bool { gameCenter.isOnline }
+    private var displayedGame: UltimateGame { gameCenter.game ?? session.game }
+    private var canPlay: Bool { online ? gameCenter.canPlay : !session.isThinking }
 
     var body: some View {
-        ZStack {
-            Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
-                    HStack(spacing: 10) {
-                        Button {
-                            gameCenter.playOnline()
-                        } label: {
-                            Label(online ? "Matches" : "Play online", systemImage: "person.2")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                header
+                modeControls
+                turnPanel
 
-                        Button {
-                            gameCenter.showAchievements()
-                        } label: {
-                            Image(systemName: "trophy")
-                                .frame(width: 36, height: 24)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel("Game Center achievements")
-
-                        Button {
-                            showingShop = true
-                        } label: {
-                            Image(systemName: purchases.adsRemoved ? "checkmark.shield" : "cart")
-                                .frame(width: 36, height: 24)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel(purchases.adsRemoved ? "Ads removed" : "Remove ads")
-                    }
-                    .controlSize(.large)
-
+                UltimateBoardView(game: displayedGame, canInteract: canPlay) { board, cell in
                     if online {
-                        HStack {
-                            Label("Game Center match", systemImage: "gamecontroller")
-                            Spacer()
-                            if let mark = gameCenter.localMark {
-                                Text("You are \(mark.symbol)")
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        gameCenter.submitMove(board: board, cell: cell)
                     } else {
-                        scoreboard
+                        session.play(board: board, cell: cell)
                     }
-
-                    status
-                    UltimateBoardView(
-                        game: displayedGame,
-                        canInteract: online ? gameCenter.canPlay : !session.isThinking
-                    ) { board, cell in
-                        if online {
-                            gameCenter.submitMove(board: board, cell: cell)
-                        } else {
-                            session.play(board: board, cell: cell)
-                        }
-                    }
-
-                    if online {
-                        HStack(spacing: 10) {
-                            Button {
-                                gameCenter.refresh()
-                            } label: {
-                                Label("Refresh", systemImage: "arrow.clockwise")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                gameCenter.closeOnlineBoard()
-                            } label: {
-                                Label("Local game", systemImage: "iphone")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                        .controlSize(.large)
-                    } else {
-                        HStack(spacing: 10) {
-                            Button {
-                                session.undoTurn()
-                            } label: {
-                                Label("Undo", systemImage: "arrow.uturn.backward")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .disabled(session.game.moves.isEmpty)
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                showingNewGame = true
-                            } label: {
-                                Label("New game", systemImage: "plus")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                        .controlSize(.large)
-                    }
-
-                    Button {
-                        showingRules = true
-                    } label: {
-                        Label("How to play", systemImage: "questionmark.circle")
-                            .font(.subheadline)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 2)
                 }
-                .frame(maxWidth: 540)
-                .padding(.horizontal, 18)
-                .padding(.top, 24)
-                .padding(.bottom, 32)
-                .frame(maxWidth: .infinity)
+                .padding(.vertical, 2)
+
+                if !online {
+                    scoreboard
+                }
+
+                gameActions
             }
+            .frame(maxWidth: 520)
+            .padding(.horizontal, 16)
+            .padding(.top, 18)
+            .padding(.bottom, 28)
+            .frame(maxWidth: .infinity)
         }
+        .scrollIndicators(.hidden)
+        .background(GameStyle.background.ignoresSafeArea())
+        .foregroundStyle(GameStyle.text)
+        .tint(GameStyle.x)
+        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .bottom) {
             if ads.canShowAds && !purchases.adsRemoved {
                 AdBanner()
                     .frame(width: 320, height: 50)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
-                    .background(.regularMaterial)
+                    .background(GameStyle.background)
                     .accessibilityLabel("Advertisement")
             }
         }
@@ -148,7 +79,9 @@ struct ContentView: View {
                 session.startNewGame(mode: mode, difficulty: difficulty)
             }
         }
-        .sheet(isPresented: $showingRules) { RulesSheet() }
+        .sheet(isPresented: $showingRules) {
+            RulesSheet()
+        }
         .sheet(isPresented: $showingShop) {
             RemoveAdsSheet(purchases: purchases, ads: ads)
         }
@@ -167,55 +100,158 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("ULTIMATE")
-                .font(.caption.weight(.bold))
-                .tracking(2.5)
-                .foregroundStyle(.secondary)
-            Text("Tic Tac Toe")
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .minimumScaleFactor(0.8)
-            Text(online ? "Game Center · Online match" :
-                 session.mode == .solo ? "Vs computer · \(session.difficulty.label)" : "Two players · Pass and play")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            Image(systemName: "square.grid.3x3.fill")
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(GameStyle.x)
+                .frame(width: 44, height: 44)
+                .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("ULTIMATE")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .tracking(3.1)
+                    .foregroundStyle(GameStyle.muted)
+                Text("Tic Tac Toe")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .tracking(-0.55)
+                    .foregroundStyle(GameStyle.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+
+            Spacer(minLength: 8)
+
+            Menu {
+                Button("How to play", systemImage: "questionmark.circle") { showingRules = true }
+                Button("Achievements", systemImage: "trophy") { gameCenter.showAchievements() }
+                Button(purchases.adsRemoved ? "Ads removed" : "Remove ads", systemImage: "cart") {
+                    showingShop = true
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(GameStyle.text)
+                    .frame(width: 44, height: 44)
+                    .background(GameStyle.surface, in: Circle())
+                    .overlay(Circle().strokeBorder(GameStyle.outline))
+            }
+            .accessibilityLabel("More options")
         }
-        .accessibilityElement(children: .combine)
     }
 
-    private var scoreboard: some View {
-        HStack(spacing: 8) {
-            scoreTile(name: session.mode == .solo ? "You" : "Player X", value: session.scores.xWins, mark: .x)
-            scoreTile(name: "Draws", value: session.scores.draws, mark: nil)
-            scoreTile(name: session.mode == .solo ? "Computer" : "Player O", value: session.scores.oWins, mark: .o)
+    private var modeControls: some View {
+        HStack(spacing: 10) {
+            Button {
+                if online {
+                    gameCenter.playOnline()
+                } else {
+                    showingNewGame = true
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: online ? "person.2.fill" : session.mode == .solo ? "cpu" : "person.2")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(modeLabel)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(GameStyle.muted)
+                }
+                .foregroundStyle(GameStyle.text)
+                .padding(.horizontal, 13)
+                .frame(height: 40)
+                .background(GameStyle.surface, in: Capsule())
+                .overlay(Capsule().strokeBorder(GameStyle.outline))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(online ? "Game Center matches" : "Change local game mode")
+
+            Spacer(minLength: 0)
+
+            Button {
+                if online {
+                    gameCenter.closeOnlineBoard()
+                } else {
+                    gameCenter.playOnline()
+                }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: online ? "iphone" : "person.2.fill")
+                    Text(online ? "Local game" : "Play online")
+                }
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(GameStyle.background)
+                .padding(.horizontal, 15)
+                .frame(height: 40)
+                .background(GameStyle.x, in: Capsule())
+            }
+            .buttonStyle(.plain)
         }
     }
 
-    private func scoreTile(name: String, value: Int, mark: Mark?) -> some View {
-        VStack(spacing: 5) {
-            Text(name).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-            Text(value.formatted())
-                .font(.system(.title2, design: .rounded, weight: .bold))
-                .foregroundStyle(mark == .x ? Color.indigo : mark == .o ? Color.orange : Color.primary)
-                .contentTransition(.numericText())
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 13))
-        .accessibilityElement(children: .combine)
+    private var modeLabel: String {
+        if online { return "Game Center" }
+        if session.mode == .solo { return "Computer · \(session.difficulty.label)" }
+        return "Pass and play"
     }
 
-    private var status: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(statusTitle)
-                .font(.system(.title3, design: .rounded, weight: .bold))
-            Text(statusDetail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+    private var turnPanel: some View {
+        HStack(spacing: 13) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(turnColor.opacity(0.12))
+                if displayedGame.result == .drawn {
+                    Image(systemName: "equal")
+                        .font(.system(size: 23, weight: .bold))
+                        .foregroundStyle(GameStyle.muted)
+                } else if displayedGame.result.isFinished {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 23, weight: .semibold))
+                        .foregroundStyle(turnColor)
+                } else {
+                    Text(displayedGame.currentPlayer.symbol)
+                        .font(.system(size: 29, weight: .heavy, design: .rounded))
+                        .foregroundStyle(turnColor)
+                }
+            }
+            .frame(width: 52, height: 52)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(statusTitle)
+                    .font(.system(size: 21, weight: .bold, design: .rounded))
+                    .tracking(-0.35)
+                    .foregroundStyle(GameStyle.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Text(statusDetail)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(GameStyle.muted)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
         }
+        .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 2)
+        .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .strokeBorder(GameStyle.outline, lineWidth: 1)
+        )
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("turn-status")
+    }
+
+    private var turnColor: Color {
+        switch displayedGame.result {
+        case .won(let mark): return GameStyle.color(for: mark)
+        case .ongoing: return GameStyle.color(for: displayedGame.currentPlayer)
+        case .drawn: return GameStyle.muted
+        }
     }
 
     private var statusTitle: String {
@@ -239,21 +275,134 @@ struct ContentView: View {
 
     private var statusDetail: String {
         if displayedGame.result.isFinished {
-            return online ? "This Game Center match is complete." : "Start a new game to play again."
+            return online ? "The Game Center match is complete." : "Start a new game to play again."
         }
         if online && gameCenter.currentMatch?.status == .ended {
-            return "Return to your matches or start a local game."
+            return "Open your matches or return to a local game."
+        }
+        if online && !gameCenter.isMyTurn {
+            return "Your opponent has the next move."
+        }
+        if !online && session.isThinking {
+            return "The computer is choosing a square."
         }
         if let destination = displayedGame.forcedBoard,
            displayedGame.legalBoards == [destination] {
-            return "Play in the highlighted \(BoardPosition.names[destination]) board."
+            return "Play in the \(BoardPosition.names[destination]) board."
         }
-        return "Choose a square in any open board."
+        return displayedGame.moves.isEmpty ? "Choose any square to begin." : "Play in any open board."
+    }
+
+    private var scoreboard: some View {
+        HStack(spacing: 0) {
+            scoreCell(
+                title: session.mode == .solo ? "YOU" : "PLAYER X",
+                value: session.scores.xWins,
+                mark: .x
+            )
+            scoreDivider
+            scoreCell(title: "DRAWS", value: session.scores.draws, mark: nil)
+            scoreDivider
+            scoreCell(
+                title: session.mode == .solo ? "COMPUTER" : "PLAYER O",
+                value: session.scores.oWins,
+                mark: .o
+            )
+        }
+        .padding(.vertical, 11)
+        .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).strokeBorder(GameStyle.outline))
+        .accessibilityIdentifier("match-scores")
+    }
+
+    private var scoreDivider: some View {
+        Rectangle()
+            .fill(GameStyle.outline)
+            .frame(width: 1, height: 25)
+    }
+
+    private func scoreCell(title: String, value: Int, mark: Mark?) -> some View {
+        HStack(spacing: 6) {
+            if let mark {
+                Text(mark.symbol)
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(GameStyle.color(for: mark))
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(0.8)
+                    .foregroundStyle(GameStyle.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Text(value.formatted())
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(GameStyle.text)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value)")
+    }
+
+    private var gameActions: some View {
+        HStack(spacing: 10) {
+            if online {
+                actionButton("Refresh", icon: "arrow.clockwise", prominent: false, enabled: true) {
+                    gameCenter.refresh()
+                }
+                actionButton("Matches", icon: "person.2", prominent: true, enabled: true) {
+                    gameCenter.playOnline()
+                }
+            } else {
+                actionButton(
+                    "Undo", icon: "arrow.uturn.backward",
+                    prominent: false, enabled: !session.game.moves.isEmpty
+                ) {
+                    session.undoTurn()
+                }
+                actionButton("New game", icon: "plus", prominent: true, enabled: true) {
+                    showingNewGame = true
+                }
+            }
+        }
+    }
+
+    private func actionButton(
+        _ title: String,
+        icon: String,
+        prominent: Bool,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .frame(height: 46)
+                .foregroundStyle(prominent ? GameStyle.background : GameStyle.text)
+                .background(
+                    prominent ? GameStyle.x : GameStyle.surface,
+                    in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .strokeBorder(prominent ? Color.clear : GameStyle.outline)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1.0 : 0.45)
     }
 }
 
 private enum BoardPosition {
-    static let names = ["top-left", "top-middle", "top-right", "middle-left", "center", "middle-right", "bottom-left", "bottom-middle", "bottom-right"]
+    static let names = [
+        "top-left", "top-middle", "top-right",
+        "middle-left", "center", "middle-right",
+        "bottom-left", "bottom-middle", "bottom-right"
+    ]
 }
 
 private struct UltimateBoardView: View {
@@ -262,25 +411,37 @@ private struct UltimateBoardView: View {
     let onSelect: (Int, Int) -> Void
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 7) {
             ForEach(0..<3, id: \.self) { row in
-                HStack(spacing: 6) {
+                HStack(spacing: 7) {
                     ForEach(0..<3, id: \.self) { column in
-                        let board = row * 3 + column
+                        let index = row * 3 + column
                         MiniBoardView(
-                            index: board,
-                            cells: game.cells[board],
-                            result: game.boardResults[board],
-                            isPlayable: canInteract && game.legalBoards.contains(board)
-                        ) { cell in onSelect(board, cell) }
+                            index: index,
+                            cells: game.cells[index],
+                            result: game.boardResults[index],
+                            canInteract: canInteract && game.legalBoards.contains(index),
+                            isForced: canInteract && game.legalBoards == [index],
+                            lastCell: game.moves.last?.board == index ? game.moves.last?.cell : nil,
+                            onSelect: { onSelect(index, $0) }
+                        )
                         .aspectRatio(1, contentMode: .fit)
                     }
                 }
             }
         }
-        .padding(6)
-        .background(Color(uiColor: .separator), in: RoundedRectangle(cornerRadius: 16))
+        .padding(9)
+        .background(
+            GameStyle.board,
+            in: RoundedRectangle(cornerRadius: 23, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 23, style: .continuous)
+                .strokeBorder(GameStyle.outline, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.20), radius: 18, x: 0, y: 9)
         .aspectRatio(1, contentMode: .fit)
+        .animation(.easeOut(duration: 0.17), value: game.moves.count)
         .accessibilityIdentifier("ultimate-board")
     }
 }
@@ -289,50 +450,74 @@ private struct MiniBoardView: View {
     let index: Int
     let cells: [Mark?]
     let result: GameResult
-    let isPlayable: Bool
+    let canInteract: Bool
+    let isForced: Bool
+    let lastCell: Int?
     let onSelect: (Int) -> Void
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 9)
-                .fill(isPlayable ? Color.accentColor.opacity(0.12) : Color(uiColor: .secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(isForced ? GameStyle.x.opacity(0.13) : GameStyle.tile)
 
             switch result {
             case .won(let mark):
-                Text(mark.symbol)
-                    .font(.system(size: 64, weight: .black, design: .rounded))
-                    .minimumScaleFactor(0.5)
-                    .foregroundStyle(mark == .x ? Color.indigo : Color.orange)
-                    .accessibilityLabel("\(mark.symbol) won this board")
+                GeometryReader { geometry in
+                    Text(mark.symbol)
+                        .font(.system(size: geometry.size.width * 0.66, weight: .black, design: .rounded))
+                        .foregroundStyle(GameStyle.color(for: mark))
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+                .accessibilityLabel("\(mark.symbol) won \(BoardPosition.names[index])")
+
             case .drawn:
                 Image(systemName: "minus")
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 31, weight: .bold, design: .rounded))
+                    .foregroundStyle(GameStyle.muted)
                     .accessibilityLabel("Drawn board")
+
             case .ongoing:
-                VStack(spacing: 2) {
+                VStack(spacing: 2.5) {
                     ForEach(0..<3, id: \.self) { row in
-                        HStack(spacing: 2) {
+                        HStack(spacing: 2.5) {
                             ForEach(0..<3, id: \.self) { column in
                                 let cell = row * 3 + column
-                                Button { onSelect(cell) } label: {
+                                Button {
+                                    onSelect(cell)
+                                } label: {
                                     GeometryReader { geometry in
                                         ZStack {
-                                            RoundedRectangle(cornerRadius: 3)
-                                                .fill(Color(uiColor: .tertiarySystemGroupedBackground))
+                                            RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                                .fill(GameStyle.cell.opacity(cells[cell] == nil ? 0.66 : 1.0))
                                             if let mark = cells[cell] {
                                                 Text(mark.symbol)
-                                                    .font(.system(size: geometry.size.width * 0.65, weight: .bold, design: .rounded))
-                                                    .foregroundStyle(mark == .x ? Color.indigo : Color.orange)
+                                                    .font(.system(
+                                                        size: geometry.size.width * 0.70,
+                                                        weight: .bold,
+                                                        design: .rounded
+                                                    ))
+                                                    .foregroundStyle(GameStyle.color(for: mark))
+                                            }
+                                        }
+                                        .overlay {
+                                            if lastCell == cell {
+                                                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                                    .strokeBorder(GameStyle.text.opacity(0.55), lineWidth: 1.5)
                                             }
                                         }
                                     }
                                     .aspectRatio(1, contentMode: .fit)
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(!isPlayable || cells[cell] != nil)
-                                .accessibilityLabel("Board \(index + 1), cell \(cell + 1): \(cells[cell]?.symbol ?? "empty")")
-                                .accessibilityHint(isPlayable && cells[cell] == nil ? "Double tap to place a mark" : "Unavailable")
+                                .disabled(!canInteract || cells[cell] != nil)
+                                .accessibilityLabel(
+                                    "\(BoardPosition.names[index]) board, \(BoardPosition.names[cell]) square, " +
+                                    "\(cells[cell]?.symbol ?? "empty")"
+                                )
+                                .accessibilityHint(
+                                    canInteract && cells[cell] == nil ? "Double tap to place a mark" : "Unavailable"
+                                )
+                                .accessibilityIdentifier("board-\(index)-cell-\(cell)")
                             }
                         }
                     }
@@ -341,11 +526,14 @@ private struct MiniBoardView: View {
             }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 9)
-                .strokeBorder(isPlayable ? Color.accentColor : Color.clear, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .strokeBorder(
+                    isForced ? GameStyle.x : GameStyle.outline.opacity(0.67),
+                    lineWidth: isForced ? 2 : 1
+                )
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Small board \(index + 1)")
+        .accessibilityLabel("\(BoardPosition.names[index]) board")
     }
 }
 
@@ -363,47 +551,62 @@ private struct NewGameSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Players") {
-                    Picker("Mode", selection: $selectedMode) {
-                        ForEach(GameMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("How do you want to play?")
+                            .font(.system(size: 23, weight: .bold, design: .rounded))
+                        Text("Your match scores carry over between games.")
+                            .font(.subheadline)
+                            .foregroundStyle(GameStyle.muted)
                     }
-                    .pickerStyle(.segmented)
-                }
-                if selectedMode == .solo {
-                    Section("Computer difficulty") {
-                        Picker("Difficulty", selection: $selectedDifficulty) {
-                            ForEach(Difficulty.allCases) { difficulty in
-                                Text(difficulty.label).tag(difficulty)
-                            }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("PLAYERS").font(.caption.weight(.semibold)).tracking(1.5)
+                            .foregroundStyle(GameStyle.muted)
+                        Picker("Players", selection: $selectedMode) {
+                            ForEach(GameMode.allCases) { mode in Text(mode.label).tag(mode) }
                         }
                         .pickerStyle(.segmented)
                     }
+
+                    if selectedMode == .solo {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("DIFFICULTY").font(.caption.weight(.semibold)).tracking(1.5)
+                                .foregroundStyle(GameStyle.muted)
+                            Picker("Difficulty", selection: $selectedDifficulty) {
+                                ForEach(Difficulty.allCases) { level in Text(level.label).tag(level) }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+
+                    Button {
+                        onStart(selectedMode, selectedDifficulty)
+                        dismiss()
+                    } label: {
+                        Text("Start game")
+                            .font(.headline)
+                            .foregroundStyle(GameStyle.background)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(GameStyle.x, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
-                Section {
-                    Text("Starting a new game clears the board but keeps your match scores.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+                .padding(24)
             }
+            .scrollIndicators(.hidden)
+            .background(GameStyle.background.ignoresSafeArea())
             .navigationTitle("New game")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Start") {
-                        onStart(selectedMode, selectedDifficulty)
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -414,16 +617,23 @@ private struct RulesSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    rule("1", title: "Play in a small board", detail: "There are nine tic tac toe boards. The first player can place an X anywhere.")
-                    rule("2", title: "Send the next player", detail: "The square you choose determines which small board your opponent must play in next. For example, taking the top-right square sends them to the top-right board.")
-                    rule("3", title: "Free moves", detail: "If the destination board has already been won or filled, the next player can choose any unfinished board.")
-                    rule("4", title: "Win the big board", detail: "Win three small boards in a row to win the game. A drawn small board belongs to neither player. If all nine boards finish without a winner, the game is a draw.")
-                    Text("The highlighted board shows where you can play.")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
+                    rule("1", title: "Play in a small board",
+                         detail: "There are nine boards. X starts and can play anywhere.")
+                    rule("2", title: "Send the next player",
+                         detail: "The square you choose determines your opponent's next board. A top-right move sends them to the top-right board.")
+                    rule("3", title: "Free moves",
+                         detail: "If the destination board is already won or filled, the next player may choose any unfinished board.")
+                    rule("4", title: "Win the big board",
+                         detail: "Win three small boards in a row. Drawn boards count for neither player. If all boards finish without a winner, the match is a draw.")
+
+                    Text("A teal outline shows the board where you can play next.")
+                        .font(.subheadline)
+                        .foregroundStyle(GameStyle.muted)
+                        .padding(.top, 5)
                 }
                 .padding(24)
             }
+            .background(GameStyle.background.ignoresSafeArea())
             .navigationTitle("How to play")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -438,12 +648,23 @@ private struct RulesSheet: View {
         HStack(alignment: .top, spacing: 14) {
             Text(number)
                 .font(.headline.monospacedDigit())
-                .foregroundStyle(.tint)
+                .foregroundStyle(GameStyle.x)
                 .frame(width: 24, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
                 Text(title).font(.headline)
-                Text(detail).font(.body).foregroundStyle(.secondary)
+                Text(detail).font(.body).foregroundStyle(GameStyle.muted)
             }
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    ContentView(
+        session: GameSession(),
+        gameCenter: GameCenterManager(),
+        purchases: PurchaseManager(),
+        ads: AdManager()
+    )
+}
+#endif
