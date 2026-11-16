@@ -8,7 +8,6 @@ struct ContentView: View {
     @ObservedObject var ads: AdManager
     @ObservedObject var statistics: GameStatisticsStore
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system.rawValue
 
     @State private var showingNewGame = false
     @State private var showingRules = false
@@ -618,8 +617,6 @@ private struct WinningLineOverlay: View {
             }
         }
     }
-}
-
 }
 
 private struct NewGameSheet: View {
