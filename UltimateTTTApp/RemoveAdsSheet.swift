@@ -5,6 +5,21 @@ struct RemoveAdsSheet: View {
     @ObservedObject var purchases: PurchaseManager
     @ObservedObject var ads: AdManager
 
+    #if DEBUG
+    /// Only the screenshot host can show a visual preview before StoreKit
+    /// is loaded. The button is disabled and never runs a fake transaction.
+    var reviewPreviewPrice: String? = nil
+    #endif
+
+    private var unavailableMessage: some View {
+        Text("Purchases are unavailable right now.")
+            .font(.subheadline)
+            .foregroundStyle(GameStyle.muted)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 14))
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -44,12 +59,29 @@ struct RemoveAdsSheet: View {
                             .buttonStyle(.plain)
                             .disabled(purchases.isPurchasing)
                         } else {
-                            Text("Purchases are unavailable right now.")
-                                .font(.subheadline)
-                                .foregroundStyle(GameStyle.muted)
-                                .padding(16)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(GameStyle.surface, in: RoundedRectangle(cornerRadius: 14))
+                            #if DEBUG
+                            if let reviewPreviewPrice {
+                                Button {} label: {
+                                    HStack {
+                                        Text("Remove ads")
+                                        Spacer()
+                                        Text(reviewPreviewPrice)
+                                    }
+                                    .font(.headline)
+                                    .foregroundStyle(GameStyle.onAccent)
+                                    .padding(.horizontal, 18)
+                                    .frame(height: 52)
+                                    .background(GameStyle.x, in: RoundedRectangle(cornerRadius: 14))
+                                }
+                                .buttonStyle(.plain)
+                                // The screenshot scenario cannot initiate a purchase.
+                                .allowsHitTesting(false)
+                            } else {
+                                unavailableMessage
+                            }
+                            #else
+                            unavailableMessage
+                            #endif
                         }
                     }
 

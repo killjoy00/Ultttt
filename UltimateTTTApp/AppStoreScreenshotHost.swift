@@ -47,6 +47,10 @@ struct AppStoreScreenshotHost: View {
                 StatisticsSheet(statistics: statistics) {}
             case "settings":
                 GameSettingsSheet()
+            case "iap":
+                // DEBUG-only, disabled visual pricing preview. The sheet itself
+                // is the real shipping SwiftUI view, with the verified US price.
+                RemoveAdsSheet(purchases: purchases, ads: ads, reviewPreviewPrice: "$1.99")
             default:
                 ContentView(
                     session: session, gameCenter: gameCenter,
