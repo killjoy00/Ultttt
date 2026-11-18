@@ -17,7 +17,11 @@ struct AppStoreScreenshotHost: View {
     init(scenario: String) {
         self.scenario = scenario
         let gameSession = GameSession()
-        gameSession.prepareStoreScreenshot()
+        if scenario == "contrast" {
+            gameSession.prepareBoardContrastScreenshot()
+        } else {
+            gameSession.prepareStoreScreenshot()
+        }
         _session = StateObject(wrappedValue: gameSession)
 
         let sampleStats = GameStatisticsStore()
@@ -58,7 +62,10 @@ struct AppStoreScreenshotHost: View {
                 )
             }
         }
-        .preferredColorScheme(scenario == "settings" ? .dark : .light)
+        .preferredColorScheme(
+            ProcessInfo.processInfo.arguments.contains("-UltimateScreenshotDark") ||
+            scenario == "settings" ? .dark : .light
+        )
     }
 }
 #endif
