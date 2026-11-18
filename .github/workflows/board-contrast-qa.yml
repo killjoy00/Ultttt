@@ -94,10 +94,13 @@ jobs:
             "$RUNNER_TEMP/ultttt-board-qa/Build/Products/Debug-iphonesimulator/UltimateTTT.app"
           for appearance in light dark; do
             xcrun simctl ui "$UDID" appearance "$appearance"
-            args=()
-            if [ "$appearance" = "dark" ]; then args+=("-UltimateScreenshotDark"); fi
-            xcrun simctl launch "$UDID" com.killjoy00.ultttt \
-              -UltimateStoreScreenshot contrast "${args[@]}"
+            if [ "$appearance" = "dark" ]; then
+              xcrun simctl launch "$UDID" com.killjoy00.ultttt \
+                -UltimateStoreScreenshot contrast -UltimateScreenshotDark
+            else
+              xcrun simctl launch "$UDID" com.killjoy00.ultttt \
+                -UltimateStoreScreenshot contrast
+            fi
             sleep 5
             xcrun simctl io "$UDID" screenshot "screenshots/board-contrast-${appearance}.png"
             xcrun simctl terminate "$UDID" com.killjoy00.ultttt || true
