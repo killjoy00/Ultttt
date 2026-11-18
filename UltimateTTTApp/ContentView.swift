@@ -89,7 +89,9 @@ struct ContentView: View {
             RulesSheet()
         }
         .sheet(isPresented: $showingShop) {
-            RemoveAdsSheet(purchases: purchases, ads: ads)
+            if AppFeatureFlags.removeAdsAvailable {
+                RemoveAdsSheet(purchases: purchases, ads: ads)
+            }
         }
         .sheet(isPresented: $showingTutorial) { TutorialSheet() }
         .sheet(isPresented: $showingStatistics) {
@@ -152,8 +154,11 @@ struct ContentView: View {
                 Button("Statistics", systemImage: "chart.bar") { showingStatistics = true }
                 Button("Leaderboards", systemImage: "list.number") { gameCenter.showLeaderboards() }
                 Button("Achievements", systemImage: "trophy") { gameCenter.showAchievements() }
-                Button(purchases.adsRemoved ? "Ads removed" : "Remove ads", systemImage: "cart") {
-                    showingShop = true
+                // Defer this unsubmitted IAP until a future app update.
+                if AppFeatureFlags.removeAdsAvailable {
+                    Button(purchases.adsRemoved ? "Ads removed" : "Remove ads", systemImage: "cart") {
+                        showingShop = true
+                    }
                 }
                 Button("Settings", systemImage: "gearshape") { showingSettings = true }
             } label: {
