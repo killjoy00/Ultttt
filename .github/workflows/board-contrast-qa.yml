@@ -1,0 +1,101 @@
+name: Board state visual QA
+
+# Capture the actual SwiftUI board on an iOS simulator in both appearances.
+# Debug-only legal game fixture; no signing, Apple credentials, or store updates.
+on:
+  pull_request:
+    paths:
+      - "UltimateTTTApp/**"
+      - ".github/workflows/board-contrast-qa.yml"
+  push:
+    branches: [main]
+    paths:
+      - "UltimateTTTApp/**"
+      - ".github/workflows/board-contrast-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    name: iPhone light and dark board screenshots
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Generate native iPhone app
+        run: |
+          set -euo pipefail
+          swift tools/generate-app-icon.swift
+          xcodegen generate
+          xcodebuild build \
+            -project UltimateTTT.xcodeproj \
+            -scheme UltimateTTT \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/ultttt-board-qa" \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/board-qa-build.log" 2>&1 || {
+              tail -100 "$RUNNER_TEMP/board-qa-build.log"
+              exit 1
+            }
+      - name: Select iPhone simulator
+        id: device
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/available-devices.json"
+          python3 - "$RUNNER_TEMP/available-devices.json" >> "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          entries=json.load(open(sys.argv[1]))["devices"]
+          phones=[d for group in entries.values() for d in group
+                  if d.get("isAvailable",True) and d["name"].startswith("iPhone")]
+          for name in ("iPhone 17 Pro","iPhone 17 Pro Max","iPhone 16 Pro",
+                       "iPhone 16 Pro Max"):
+              found=next((d for d in phones if d["name"]==name),None)
+              if found:
+                  print("udid="+found["udid"])
+                  print("Using",name,file=sys.stderr)
+                  sys.exit(0)
+          if phones:
+              print("udid="+phones[0]["udid"])
+              print("Using",phones[0]["name"],file=sys.stderr)
+          else:
+              sys.exit("No available iPhone simulators")
+          PY
+      - name: Boot and capture both appearances
+        env:
+          UDID: ${{ steps.device.outputs.udid }}
+        run: |
+          set -euo pipefail
+          mkdir -p screenshots
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --wifiMode active --wifiBars 3 || true
+          xcrun simctl install "$UDID" \
+            "$RUNNER_TEMP/ultttt-board-qa/Build/Products/Debug-iphonesimulator/UltimateTTT.app"
+          for appearance in light dark; do
+            xcrun simctl ui "$UDID" appearance "$appearance"
+            args=()
+            if [ "$appearance" = "dark" ]; then args+=("-UltimateScreenshotDark"); fi
+            xcrun simctl launch "$UDID" com.killjoy00.ultttt \
+              -UltimateStoreScreenshot contrast "${args[@]}"
+            sleep 5
+            xcrun simctl io "$UDID" screenshot "screenshots/board-contrast-${appearance}.png"
+            xcrun simctl terminate "$UDID" com.killjoy00.ultttt || true
+          done
+          test -s screenshots/board-contrast-light.png
+          test -s screenshots/board-contrast-dark.png
+          echo "Screenshots captured from six legitimately won boards and the forced top-left board."
+      - name: Keep screenshots for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ultttt-board-contrast-light-dark
+          path: screenshots/board-contrast-*.png
+          if-no-files-found: ignore
+          retention-days: 30
