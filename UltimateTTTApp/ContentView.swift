@@ -488,6 +488,8 @@ struct UltimateBoardView: View {
 }
 
 private struct MiniBoardView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let index: Int
     let cells: [Mark?]
     let result: GameResult
@@ -514,6 +516,14 @@ private struct MiniBoardView: View {
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 3.5, style: .continuous)
                                             .fill(GameStyle.cell.opacity(cells[cell] == nil ? 0.66 : 1.0))
+                                        // Tint the *cells*, not just the gaps around them:
+                                        // a claimed board should read as filled at a glance.
+                                        if case .won(let winner) = result {
+                                            RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                                .fill(GameStyle.color(for: winner).opacity(
+                                                    colorScheme == .dark ? 0.32 : 0.24
+                                                ))
+                                        }
                                         if let mark = cells[cell] {
                                             Text(mark.symbol)
                                                 .font(.system(
@@ -558,9 +568,23 @@ private struct MiniBoardView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .strokeBorder(borderColor, lineWidth: result == .ongoing ? (isForced ? 2.5 : 1) : 3)
+                .strokeBorder(borderColor, lineWidth: result == .ongoing ? (isForced ? 3.5 : 1) : 3.2)
         }
-        .shadow(color: isForced ? GameStyle.x.opacity(0.24) : .clear, radius: isForced ? 6 : 0)
+        .overlay {
+            // A pale inner focus ring belongs to the playable destination;
+            // a color-matched inner edge belongs to already-won boards.
+            if isForced && result == .ongoing {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(GameStyle.surface.opacity(0.95), lineWidth: 1.4)
+                    .padding(4)
+            }
+            if case .won(let mark) = result {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(GameStyle.color(for: mark).opacity(0.65), lineWidth: 1.2)
+                    .padding(4)
+            }
+        }
+        .shadow(color: isForced ? GameStyle.x.opacity(0.32) : .clear, radius: isForced ? 8 : 0)
         .animation(.easeOut(duration: 0.22), value: isForced)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(BoardPosition.names[index]) board, \(boardDescription)")
@@ -568,9 +592,10 @@ private struct MiniBoardView: View {
 
     private var backgroundColor: Color {
         switch result {
-        case .won(let mark): return GameStyle.color(for: mark).opacity(0.11)
+        case .won(let mark):
+            return GameStyle.color(for: mark).opacity(colorScheme == .dark ? 0.46 : 0.34)
         case .drawn: return GameStyle.muted.opacity(0.12)
-        case .ongoing: return isForced ? GameStyle.x.opacity(0.13) : GameStyle.tile
+        case .ongoing: return isForced ? GameStyle.x.opacity(0.07) : GameStyle.tile
         }
     }
 
@@ -598,7 +623,7 @@ private struct WinningLineOverlay: View {
     var body: some View {
         GeometryReader { geometry in
             if let line, line.count == 3 {
-                Path { path in
+                let path = Path { path in
                     let gap: CGFloat = 2.5
                     let width = (geometry.size.width - gap * 2) / 3
                     func center(_ index: Int) -> CGPoint {
@@ -610,9 +635,15 @@ private struct WinningLineOverlay: View {
                     path.move(to: center(line[0]))
                     path.addLine(to: center(line[2]))
                 }
-                .stroke(
-                    GameStyle.color(for: mark).opacity(0.78),
-                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                // The contrasting under-stroke keeps the winning line readable
+                // against the richer claimed-board tint in both appearances.
+                path.stroke(
+                    GameStyle.surface.opacity(0.94),
+                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                )
+                path.stroke(
+                    GameStyle.color(for: mark),
+                    style: StrokeStyle(lineWidth: 3.6, lineCap: .round)
                 )
             }
         }
