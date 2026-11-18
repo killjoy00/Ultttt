@@ -1,5 +1,11 @@
 import SwiftUI
 
+/// The first App Store release does not offer any in-app purchases.
+/// Change this only alongside a reviewed StoreKit product and new app version.
+enum AppFeatureFlags {
+    static let removeAdsAvailable = false
+}
+
 @main
 struct UltimateTTTApp: App {
     @StateObject private var session = GameSession()
@@ -61,9 +67,14 @@ struct UltimateTTTApp: App {
         guard !servicesStarted else { return }
         servicesStarted = true
         gameCenter.configureAuthentication()
-        // StoreKit must be checked before any ad SDK or consent prompt.
-        await purchases.prepare()
-        if !purchases.adsRemoved {
+        // The initial release intentionally has no purchasable features.
+        // Do not fetch unsubmitted StoreKit products; retain code for a future version.
+        if AppFeatureFlags.removeAdsAvailable {
+            await purchases.prepare()
+            if !purchases.adsRemoved {
+                await ads.prepare()
+            }
+        } else {
             await ads.prepare()
         }
     }
