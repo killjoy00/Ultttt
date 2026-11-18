@@ -567,21 +567,25 @@ private struct MiniBoardView: View {
             }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .strokeBorder(borderColor, lineWidth: result == .ongoing ? (isForced ? 3.5 : 1) : 3.2)
+            // Claimed boards are color-filled, with NO border or inner ring.
+            // The teal double outline is reserved for the board you must play.
+            if result == .ongoing {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .strokeBorder(
+                        isForced ? GameStyle.x : GameStyle.outline,
+                        lineWidth: isForced ? 3.5 : 1
+                    )
+                    .allowsHitTesting(false)
+            } else if result == .drawn {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .strokeBorder(GameStyle.muted.opacity(0.5), lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
         }
         .overlay {
-            // A pale inner focus ring belongs to the playable destination;
-            // a color-matched inner edge belongs to already-won boards.
             if isForced && result == .ongoing {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(GameStyle.surface.opacity(0.95), lineWidth: 1.4)
-                    .padding(4)
-                    .allowsHitTesting(false)
-            }
-            if case .won(let mark) = result {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(GameStyle.color(for: mark).opacity(0.65), lineWidth: 1.2)
                     .padding(4)
                     .allowsHitTesting(false)
             }
@@ -598,14 +602,6 @@ private struct MiniBoardView: View {
             return GameStyle.color(for: mark).opacity(colorScheme == .dark ? 0.46 : 0.34)
         case .drawn: return GameStyle.muted.opacity(0.12)
         case .ongoing: return isForced ? GameStyle.x.opacity(0.07) : GameStyle.tile
-        }
-    }
-
-    private var borderColor: Color {
-        switch result {
-        case .won(let mark): return GameStyle.color(for: mark)
-        case .drawn: return GameStyle.muted.opacity(0.5)
-        case .ongoing: return isForced ? GameStyle.x : GameStyle.outline
         }
     }
 
