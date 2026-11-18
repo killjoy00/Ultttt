@@ -8,6 +8,10 @@ struct UltimateTTTApp: App {
     @StateObject private var ads = AdManager()
     @StateObject private var statistics = GameStatisticsStore()
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system.rawValue
+    @AppStorage("ultttt.first-launch-tutorial.acknowledged.v1")
+    private var hasChosenOnboarding = false
+    @State private var showingFirstLaunchTutorial = false
+    @State private var servicesStarted = false
 
     var body: some Scene {
         WindowGroup {
@@ -32,14 +36,36 @@ struct UltimateTTTApp: App {
                 statistics: statistics
             )
             .preferredColorScheme(AppearancePreference(rawValue: appearance)?.colorScheme)
-            .task {
-                gameCenter.configureAuthentication()
-                // Check StoreKit before starting any ad SDK or requesting consent.
-                await purchases.prepare()
-                if !purchases.adsRemoved {
-                    await ads.prepare()
+            .fullScreenCover(isPresented: $showingFirstLaunchTutorial) {
+                TutorialSheet(isFirstLaunch: true) {
+                    // Skip and completion are equally valid choices.
+                    // The game underneath is untouched by practice moves.
+                    hasChosenOnboarding = true
+                    showingFirstLaunchTutorial = false
+                    Task { await startServicesIfNeeded() }
                 }
             }
+            .task {
+                if !hasChosenOnboarding {
+                    // Offer the tour before Game Center sign-in or ad consent
+                    // can interrupt the player's first impression.
+                    showingFirstLaunchTutorial = true
+                } else {
+                    await startServicesIfNeeded()
+                }
+            }
+    }
+
+    @MainActor
+    private func startServicesIfNeeded() async {
+        guard !servicesStarted else { return }
+        servicesStarted = true
+        gameCenter.configureAuthentication()
+        // StoreKit must be checked before any ad SDK or consent prompt.
+        await purchases.prepare()
+        if !purchases.adsRemoved {
+            await ads.prepare()
+        }
     }
 
     #if DEBUG
