@@ -20,10 +20,14 @@ permissions:
 jobs:
   screenshots:
     name: iPhone light and dark board screenshots
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Select Xcode 26 (same as the established screenshot pipeline)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
       - name: Install XcodeGen
         run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
       - name: Generate native iPhone app
@@ -71,8 +75,18 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p screenshots
-          xcrun simctl boot "$UDID"
-          xcrun simctl bootstatus "$UDID" -b
+          python3 - "$UDID" <<'PY'
+          import subprocess,sys
+          udid=sys.argv[1]
+          for cmd,seconds in (
+              (["xcrun","simctl","boot",udid],120),
+              (["xcrun","simctl","bootstatus",udid,"-b"],300),
+          ):
+              print("Running:",*cmd,flush=True)
+              try: subprocess.run(cmd,check=True,timeout=seconds)
+              except subprocess.TimeoutExpired:
+                  sys.exit("Simulator boot timed out")
+          PY
           xcrun simctl status_bar "$UDID" override \
             --time "9:41" --batteryState charged --batteryLevel 100 \
             --wifiMode active --wifiBars 3 || true
