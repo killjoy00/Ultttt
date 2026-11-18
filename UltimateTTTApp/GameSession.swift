@@ -78,6 +78,40 @@ final class GameSession: ObservableObject {
     }
     #endif
 
+    #if DEBUG
+    /// A real, legal late-game position for checking claimed-vs-playable colors.
+    /// Replays only valid moves and never modifies the saved player's game.
+    func prepareBoardContrastScreenshot() {
+        gameID = UUID()
+        mode = .twoPlayer
+        difficulty = .medium
+        isThinking = false
+        scores = MatchScores()
+
+        var preview = UltimateGame()
+        let moves: [(Int, Int)] = [
+            (3, 6), (6, 4), (4, 2), (2, 3), (3, 2), (2, 4),
+            (4, 3), (3, 1), (1, 1), (1, 4), (4, 7), (7, 4),
+            (4, 0), (0, 6), (6, 2), (2, 8), (8, 0), (0, 4),
+            (4, 4), (4, 1), (1, 8), (8, 5), (5, 7), (7, 7),
+            (7, 1), (1, 3), (3, 4), (4, 5), (5, 8), (8, 8),
+            (8, 6), (6, 6), (6, 5), (5, 5), (5, 2), (2, 5),
+            (5, 3), (1, 0), (0, 2), (6, 0), (0, 8), (8, 4),
+            (4, 6), (6, 8), (8, 7), (7, 6), (1, 2), (5, 1),
+            (1, 5), (5, 0), (0, 7), (7, 3), (5, 4), (7, 0)
+        ]
+        for (board, cell) in moves {
+            precondition(preview.play(Move(board: board, cell: cell)))
+        }
+        // Six claimed boards (three for each side) plus a teal-only
+        // destination highlight in the still-playable top-left board.
+        assert(preview.legalBoards == [0])
+        assert(preview.boardResults.filter { $0 == .won(.x) }.count == 3)
+        assert(preview.boardResults.filter { $0 == .won(.o) }.count == 3)
+        game = preview
+    }
+    #endif
+
     func startNewGame(mode: GameMode, difficulty: Difficulty) {
         gameID = UUID()
         isThinking = false
