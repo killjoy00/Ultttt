@@ -74,7 +74,7 @@ struct UltimateTTTApp: App {
         guard let index = args.firstIndex(of: "-UltimateStoreScreenshot"),
               args.indices.contains(index + 1) else { return nil }
         let option = args[index + 1]
-        return ["board", "setup", "tutorial", "statistics", "settings", "iap"].contains(option)
+        return ["board", "contrast", "setup", "tutorial", "statistics", "settings", "iap"].contains(option)
             ? option : nil
     }
     #endif
