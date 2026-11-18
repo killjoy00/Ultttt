@@ -10,12 +10,14 @@ Native SwiftUI Ultimate Tic/Tac/Toe, targeting iOS 17+ (initial release version 
 - Five Game Center achievements: First Win, Five Wins, Ten Wins, First Online Win, Twenty-Five Online Wins
 - Google AdMob banner; a one-time StoreKit 2 non-consumable removes ads
 - Complete forced-board rules, local undo, saved local games and match scores
-- Interactive three-stage beginner tutorial, won-board winning-line overlays and clear free-choice feedback
+- Optional first-launch tutorial with animated welcome, guided real-engine moves, forced-board and free-turn practice, winning-row demo, skip/replay, and saved onboarding choice; won-board winning-line overlays
 - Move-by-move game replay with key moments from actual board wins
 - Local win/loss/draw statistics, streaks and difficulty splits; online cumulative wins leaderboard
 - Optional in-app sounds and haptics
 
-Open **More → Settings** to choose Follow iPhone, Light or Dark appearance and enable or disable sound/haptic feedback. Open **More → Interactive tutorial** for a playable walkthrough; **More → Statistics** shows match results and a link to Game Center leaderboards.
+On a fresh install, the game offers a **skippable tutorial before Game Center authentication or ad-consent prompts**. Players can choose **Show me how** or **Skip tutorial · Play now**. This choice is saved; the prompt won't interrupt later launches. Practice uses a separate rules-engine state and never changes the live game, achievements, scores, or online matches. The walkthrough can be reopened anytime through **More → Interactive tutorial**, even after skipping.
+
+Open **More → Settings** to choose Follow iPhone, Light or Dark appearance and enable or disable sound/haptic feedback. **More → Statistics** shows match results and a link to Game Center leaderboards.
 
 Online moves cannot be undone. Game Center stores matches while the app is closed and is responsible for notifying a player when their opponent ends a turn; delivery depends on that player's Apple/Game Center notification preferences. The app also refreshes its in-app "Your turn" count when returning to the foreground. There is no custom push server or separate user account.
 
@@ -71,3 +73,13 @@ Game Center match data is reconstructed from its move history before being displ
 ## App Store readiness
 
 See [App Store setup](docs/app-store/SETUP.md), [store text draft](docs/app-store/en-US.json), and the [privacy policy](PRIVACY.md). The app icon is generated on CI. TestFlight signing can reuse the existing Apple credentials stored in the EZTrivia GitHub Actions runner; no signing keys belong in this repository.
+
+## First-launch tutorial QA
+
+- Fresh install: welcome screen appears on opening; try **Skip** and confirm the game is playable without Game Center or ad SDK prompts appearing over onboarding.
+- Relaunch after skipping: welcome does not reappear. Reopen it through **More → Interactive tutorial**.
+- Replay tutorial: tap an opening X, confirm the teal outline switches to the square's matching board, and O can only be placed inside that board.
+- Closed-board example: only one center tile is labeled **WON**; any other board advances to the explanation of winning three small boards in a row.
+- Complete the tour, verify the real match is untouched, then relaunch and confirm onboarding remains dismissed.
+- Test Light, Dark, VoiceOver and **Reduce Motion**; on smaller iPhones the layout scrolls while **Skip** and **Let's play** remain reachable.
+- Do not modify the \`ultttt.first-launch-tutorial.acknowledged.v1\` preference key without a deliberate migration plan.
