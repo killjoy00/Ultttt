@@ -577,11 +577,13 @@ private struct MiniBoardView: View {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(GameStyle.surface.opacity(0.95), lineWidth: 1.4)
                     .padding(4)
+                    .allowsHitTesting(false)
             }
             if case .won(let mark) = result {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(GameStyle.color(for: mark).opacity(0.65), lineWidth: 1.2)
                     .padding(4)
+                    .allowsHitTesting(false)
             }
         }
         .shadow(color: isForced ? GameStyle.x.opacity(0.32) : .clear, radius: isForced ? 8 : 0)
