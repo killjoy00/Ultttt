@@ -72,7 +72,7 @@ Game Center match data is reconstructed from its move history before being displ
 
 ## App Store readiness
 
-See [App Store setup](docs/app-store/SETUP.md), [store text draft](docs/app-store/en-US.json), and the [privacy policy](PRIVACY.md). The app icon is generated on CI. TestFlight signing can reuse the existing Apple credentials stored in the EZTrivia GitHub Actions runner; no signing keys belong in this repository.
+See [App Store setup](docs/app-store/SETUP.md), [store text draft](docs/app-store/en-US.json), and the live [Privacy Policy](https://killjoy00.github.io/Ultttt/privacy/), [Privacy Choices](https://killjoy00.github.io/Ultttt/privacy-choices/), and [Support](https://killjoy00.github.io/Ultttt/support/) pages. The app icon is generated on CI. TestFlight signing can reuse the existing Apple credentials stored in the EZTrivia GitHub Actions runner; no signing keys belong in this repository.
 
 ## First-launch tutorial QA
 

@@ -1,6 +1,14 @@
 # Ultimate Tic/Tac/Toe — Privacy Policy
 
-**Last updated: November 16, 2026**
+**Last updated: November 17, 2026**
+
+**Current public privacy policy:** https://killjoy00.github.io/Ultttt/privacy/
+
+**Privacy choices:** https://killjoy00.github.io/Ultttt/privacy-choices/
+
+The public website is the canonical source. The summary below is retained in this repository for developers and reviewers.
+
+
 
 Ultimate Tic/Tac/Toe is an iPhone game. This policy describes information handled by the app and the third-party services it uses.
 

@@ -35,7 +35,7 @@ The user created the App Store Connect app as Ultimate Tic/Tac/Toe because the o
 - Product ID: com.killjoy00.ultttt.remove_ads
 - Display name: Remove Ads
 - English description: Remove banner ads forever with a one-time purchase.
-- Price: Choose in App Store Connect; no price has been selected by the developer.
+- Price: US $1.99 one time, verified in App Store Connect; no subscription.
 - Do not create a subscription or consumable for this purchase.
 
 ## Classic Game Center leaderboard
@@ -67,7 +67,9 @@ The source currently uses Google's official demo App ID and demo banner unit ID.
 
 ## Available public pages
 
-- Privacy policy: https://github.com/killjoy00/Ultttt/blob/main/PRIVACY.md
-- Support: https://github.com/killjoy00/Ultttt/issues
+- Privacy policy: https://killjoy00.github.io/Ultttt/privacy/
+- Privacy choices: https://killjoy00.github.io/Ultttt/privacy-choices/
+- Support: https://killjoy00.github.io/Ultttt/support/
+- Developer website: https://killjoy00.github.io/Ultttt/
 
 The app icon is generated on a GitHub macOS runner with swift tools/generate-app-icon.swift before the Xcode project is generated. Store screenshots must be captured from the real running app; do not submit invented mock screenshots.
