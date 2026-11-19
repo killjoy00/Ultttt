@@ -15,6 +15,6 @@
   "releaseName": "Ultimate Tic/Tac/Toe 1.0 Android internal test",
   "whatsNew": "First Android test build: offline computer games, pass-and-play, saved matches, stats, replay, and light/dark themes.",
   "supportUrl": "https://killjoy00.github.io/Ultttt/support/",
-  "privacyPolicyUrl": "https://github.com/killjoy00/Ultttt/blob/feat/android-playable-foundation/android/PRIVACY.md",
+  "privacyPolicyUrl": "https://github.com/killjoy00/Ultttt/blob/main/android/PRIVACY.md",
   "status": "preparation - not verified in Play Console"
 }
