@@ -1,7 +1,13 @@
 name: iOS CI
 on:
   push:
+    paths-ignore:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
   pull_request:
+    paths-ignore:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
 
 jobs:
   rules-tests:
