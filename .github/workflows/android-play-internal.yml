@@ -1,0 +1,115 @@
+name: Ultimate TTT - Google Play Internal Testing
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'Increasing Google Play version code'
+        required: true
+        type: string
+      version_name:
+        description: 'Player-facing version (e.g. 1.0.0-alpha01)'
+        required: true
+        type: string
+      release_notes:
+        description: 'What testers should check'
+        required: true
+        type: string
+      confirm_internal_upload:
+        description: 'I approve uploading this build to INTERNAL testing only'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ultttt-android-play-internal
+  cancel-in-progress: false
+
+jobs:
+  internal:
+    if: github.ref == 'refs/heads/main' && inputs.confirm_internal_upload == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Validate version and upload credentials
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || {
+            echo "::error::Version code must be a positive integer"
+            exit 1
+          }
+          test -n "$VERSION_NAME" || { echo "::error::Version name is required"; exit 1; }
+          test -n "$KEYSTORE_BASE64" || { echo "::error::Missing ANDROID_UPLOAD_KEYSTORE_BASE64"; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo "::error::Missing ANDROID_UPLOAD_KEY_PASSWORD"; exit 1; }
+          test -n "$PLAY_SERVICE_ACCOUNT" || { echo "::error::Missing GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"; exit 1; }
+
+      - name: Materialize and verify PKCS12 upload key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/ultttt-upload.p12"
+          chmod 600 "$RUNNER_TEMP/ultttt-upload.p12"
+          keytool -list -keystore "$RUNNER_TEMP/ultttt-upload.p12" \
+            -storetype PKCS12 -storepass "$KEYSTORE_PASSWORD" -alias upload >/dev/null
+
+      - name: Run rules tests and build signed release Android App Bundle
+        env:
+          ULTTTT_VERSION_CODE: ${{ inputs.version_code }}
+          ULTTTT_VERSION_NAME: ${{ inputs.version_name }}
+          ANDROID_UPLOAD_KEYSTORE_PATH: ${{ runner.temp }}/ultttt-upload.p12
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon -p android testDebugUnitTest bundleRelease
+          test -s android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Save tested release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultttt-android-play-v${{ inputs.version_code }}
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write internal tester notes
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/play-notes"
+          printf '%s\n' "$RELEASE_NOTES" > "$RUNNER_TEMP/play-notes/whatsnew-en-US"
+
+      - name: Upload only to Google Play Internal Testing
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.killjoy00.ultttt
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          releaseName: Ultimate Tic/Tac/Toe ${{ inputs.version_name }}
+          whatsNewDirectory: ${{ runner.temp }}/play-notes
