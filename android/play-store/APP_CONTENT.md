@@ -11,7 +11,7 @@
 - Short and full descriptions: see [en-US.json](en-US.json)
 - Contact email: **must use the developer's Play Console contact email** (not provided to this repository; don't invent one)
 - Website/support: https://killjoy00.github.io/Ultttt/support/
-- Privacy policy for Android version: https://github.com/killjoy00/Ultttt/blob/feat/android-playable-foundation/android/PRIVACY.md
+- Privacy policy for Android version: https://github.com/killjoy00/Ultttt/blob/main/android/PRIVACY.md
 - Suggested release notes: *First Android test build: offline computer games, pass-and-play, saved matches, stats, replay, and light/dark themes.*
 
 ## App content / policy declarations (current Android binary only)
