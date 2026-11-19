@@ -52,7 +52,12 @@ def tap_node(predicate, reason):
     raise RuntimeError("Missing tappable " + reason + "; sample labels: " + repr(labels[:45]))
 
 def tap_text(label):
-    tap_node(lambda n: label.lower() in n.get("text","").lower() or label.lower() in n.get("content-desc","").lower(),label)
+    # Avoid matching "Play" inside "Two players" in the new-game dialog.
+    exact = label.lower() != "skip"
+    def is_target(node):
+        values = [node.get("text", "").lower(), node.get("content-desc", "").lower()]
+        return any(v == label.lower() if exact else label.lower() in v for v in values)
+    tap_node(is_target, label)
 
 def capture(name):
     time.sleep(0.4)
