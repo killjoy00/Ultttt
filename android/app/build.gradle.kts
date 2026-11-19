@@ -4,6 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseVersionCode = providers.environmentVariable("ULTTTT_VERSION_CODE").orNull
+val releaseVersionName = providers.environmentVariable("ULTTTT_VERSION_NAME").orNull
+val uploadStorePath = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE_PATH").orNull
+val uploadStorePassword = providers.environmentVariable("ANDROID_UPLOAD_KEY_PASSWORD").orNull
+
 android {
     namespace = "com.killjoy00.ultttt"
     compileSdk = 36
@@ -12,14 +17,29 @@ android {
         applicationId = "com.killjoy00.ultttt"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = releaseVersionCode?.toIntOrNull() ?: 1
+        versionName = releaseVersionName ?: "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("upload") {
+            if (!uploadStorePath.isNullOrBlank()) {
+                storeFile = file(uploadStorePath)
+                storeType = "PKCS12"
+                storePassword = uploadStorePassword
+                keyAlias = "upload"
+                keyPassword = uploadStorePassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Debug/CI builds never require signing secrets; release uploads always do.
+            if (!uploadStorePath.isNullOrBlank())
+                signingConfig = signingConfigs.getByName("upload")
         }
     }
 
