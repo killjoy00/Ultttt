@@ -16,9 +16,16 @@ jobs:
 
   simulator-build:
     name: iPhone simulator build
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
+      - name: Verify iOS 27 SDK
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          major="${sdk%%.*}"
+          if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate app icon
