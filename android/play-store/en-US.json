@@ -1,0 +1,20 @@
+{
+  "language": "en-US",
+  "title": "Ultimate Tic/Tac/Toe",
+  "shortDescription": "Nine boards. One big win. Play tic-tac-toe with a strategy twist.",
+  "fullDescription": "Nine boards. One big win.\n\nTic-tac-toe, with a twist. Every move sends your opponent to their next mini-board. Win three small boards in a row to take the whole game.\n\nPLAY YOUR WAY\n• Challenge the computer at Easy, Medium, or Hard difficulty.\n• Pass the phone for a local two-player match.\n• Play offline with no account or internet connection.\n\nTHINK ABOUT THE NEXT BOARD\nYour square determines your opponent's next board. If that board is finished, they may choose any open board. Highlighted destinations and winning lines help you see the next move.\n\nKEEP YOUR MOMENTUM\n• Undo local moves.\n• Replay the moves in your current game.\n• Track local wins and draws on your device.\n• Switch between light, dark, and system appearance.\n• Learn the rules with an optional first-run introduction.\n\nFree to play. This initial Android version does not contain ads or in-app purchases.\n\nOne board is never enough.",
+  "category": "GAME",
+  "gameCategory": "BOARD",
+  "suggestedTags": [
+    "Board game",
+    "Strategy"
+  ],
+  "defaultLanguage": "en-US",
+  "price": "FREE",
+  "packageName": "com.killjoy00.ultttt",
+  "releaseName": "Ultimate Tic/Tac/Toe 1.0 Android internal test",
+  "whatsNew": "First Android test build: offline computer games, pass-and-play, saved matches, stats, replay, and light/dark themes.",
+  "supportUrl": "https://killjoy00.github.io/Ultttt/support/",
+  "privacyPolicyUrl": "https://github.com/killjoy00/Ultttt/blob/feat/android-playable-foundation/android/PRIVACY.md",
+  "status": "preparation - not verified in Play Console"
+}
