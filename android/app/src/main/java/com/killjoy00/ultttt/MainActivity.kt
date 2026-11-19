@@ -170,11 +170,12 @@ private fun UltimateApp(store: LocalSessionStore) {
                     }
                     Text(heading, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
+                    val forcedDestination = session.game.forcedBoard
                     Text(
                         if (session.game.result.isFinished) "Start another game or replay your moves."
-                        else if (session.game.forcedBoard != null &&
+                        else if (forcedDestination != null &&
                             session.game.legalBoards.size == 1) {
-                            "Play in highlighted board " + (session.game.forcedBoard + 1)
+                            "Play in highlighted board " + (forcedDestination + 1)
                         } else "Free choice: play in any open board.",
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center
