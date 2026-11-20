@@ -17,8 +17,8 @@ android {
         applicationId = "com.killjoy00.ultttt"
         minSdk = 26
         targetSdk = 36
-        versionCode = releaseVersionCode?.toIntOrNull() ?: 1
-        versionName = releaseVersionName ?: "1.0"
+        versionCode = releaseVersionCode?.toIntOrNull() ?: 2
+        versionName = releaseVersionName ?: "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -36,7 +36,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Enable R8 so the AAB includes a mapping for readable crash reports.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            // Include symbols from any unstripped native libraries in the bundle.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             // Debug/CI builds never require signing secrets; release uploads always do.
             if (!uploadStorePath.isNullOrBlank())
                 signingConfig = signingConfigs.getByName("upload")
