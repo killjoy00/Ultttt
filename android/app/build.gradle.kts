@@ -29,8 +29,8 @@ android {
         applicationId = "com.killjoy00.ultttt"
         minSdk = 26
         targetSdk = 36
-        versionCode = releaseVersionCode?.toIntOrNull() ?: 3
-        versionName = releaseVersionName ?: "1.1.0"
+        versionCode = releaseVersionCode?.toIntOrNull() ?: 5
+        versionName = releaseVersionName ?: "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["admobAppId"] = configuredAppId
         buildConfigField("boolean", "ADMOB_CONFIGURED", liveAdMobConfigured.toString())
