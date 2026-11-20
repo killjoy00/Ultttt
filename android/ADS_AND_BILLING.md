@@ -1,4 +1,4 @@
-# Android ads and Remove Ads — release 1.1.0 (version code 3)
+# Android ads and Remove Ads — internal version 3, production version 4
 
 ## Verification status and publisher identity
 
@@ -32,7 +32,7 @@ Allow Google Play and AdMob time to crawl/review the new store website link.
   launch, ownership is checked with Google Play Billing's queryPurchasesAsync; a server-side
   verification backend is not included here.
 
-## Mandatory identifiers and Google Play setup before publishing code 3
+## Mandatory identifiers and Google Play setup before production version code 4
 
 **Do not confuse these values with the app-ads.txt publisher ID.** Two values
 must be copied from **AdMob → Apps → Ultimate Tic/Tac/Toe (Android)**:
@@ -46,24 +46,24 @@ Debug builds use Google's official test app/banner IDs. A release with no real i
 remains ad-disabled, so no accidental real-ad request or unconfigured ad startup occurs.
 **A Play release must require the real IDs** and validate their format/owner.
 
-In Google Play Console, register a **one-time non-consumable product**
+Google Play rejected creating a one-time product for the currently published app with the message "request billing permission". The Android source now explicitly declares `com.android.vending.BILLING`; an **internal-only code-3 bundle** uses the shared EZTrivia signing key to register this permission before product creation. Do not enable live ads in that internal build.
+
+After the billing-enabled bundle is registered, configure a **one-time non-consumable product**
 `com.killjoy00.ultttt.remove_ads` with an agreed price, localization, and activated
-purchase option. A configured Google Play Billing product is required before advertising a
+purchase option at US $1.99. A configured Google Play Billing product is required before advertising a
 working Remove Ads purchase. Verify purchase, cancellation, pending state, refund,
 reinstall and restoration on a tester account.
 
 Complete the Play Console **Contains ads** declaration, update **Data safety** disclosures
 for Google Mobile Ads/UMP/Billing, review age/target-audience restrictions, and ensure
-AdMob Privacy & messaging regional consent forms are configured before submitting code 3.
+AdMob Privacy & messaging regional consent forms are configured before submitting production code 4.
 Publish the revised Android privacy policy before the monetized build.
 
 ## Automated release guardrails
 
-The **v2** signed upload workflow is intentionally not reused for code 3 without changing
-its fixed version / pre-release checks. The next production release must use version
-code 3 and a separate explicit release request, and must check live AdMob IDs, active
-Remove Ads product, signed app bundle, launcher icon, R8 mapping, and Play review status.
+The prior **code-2 production** workflow is immutable; code 3 uploads only to **internal testing** with live ads disabled. The next production release uses **version code 4, version name 1.1.0**, via the separate guarded workflow in EZTrivia (`ultttt-play-v4-ads-production.yml`). It requires an explicit request with correctly formatted AdMob IDs, activated Remove Ads purchase at USD 1.99, Play advertising/data safety confirmation, a signed bundle, and a verified R8 mapping.
 
-Never put a Google Play service-account JSON, signing key, AdMob app ID/ad unit secrets,
-or purchase tokens into a GitHub commit, GitHub issue, or support email. AdMob publisher
-IDs and public app-ads.txt entries are already public and safe to publish.
+Never put a Google Play service-account JSON, signing key, AdMob OAuth refresh token,
+or purchase tokens into a GitHub commit, GitHub issue, or support email. AdMob publisher,
+App ID, and ad-unit identifiers are public configuration values (not authentication
+secrets), but must be validated against the authorized publisher before use.
