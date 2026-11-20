@@ -78,11 +78,11 @@ struct TutorialSheet: View {
                                 .font(.subheadline.weight(.semibold))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .foregroundStyle(GameStyle.x)
+                        .foregroundStyle(GameStyle.o)
                         .padding(.horizontal, 15)
                         .padding(.vertical, 13)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(GameStyle.x.opacity(0.10), in:
+                        .background(GameStyle.o.opacity(0.10), in:
                             RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .accessibilityIdentifier("tutorial-forced-board-tip")
                     }
@@ -203,7 +203,7 @@ struct TutorialSheet: View {
         case .playAnywhere:
             "You're X. There are nine smaller boards, and the opening move can go in any empty square. Your turn!"
         case .followBoard:
-            "Look at where you placed X. That square sends O to the matching board. The teal outline shows where O can play."
+            "Look at where you placed X. That square sends O to the matching board. The coral outline shows where O can play."
         case .freeTurn:
             "Here's an example: the center board has already been won. If a move sends you there, you can pick any board that's still open."
         case .ready:
@@ -229,7 +229,7 @@ struct TutorialSheet: View {
                         .foregroundStyle(GameStyle.x)
                     Text(stage == .playAnywhere
                          ? "Tap any empty square to place X."
-                         : "Place O inside the teal-outlined board.")
+                         : "Place O inside the coral-outlined board.")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(GameStyle.muted)
                 }

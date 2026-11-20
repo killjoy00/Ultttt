@@ -468,6 +468,7 @@ struct UltimateBoardView: View {
                             result: game.boardResults[index],
                             canInteract: canInteract && game.legalBoards.contains(index),
                             isForced: game.legalBoards == [index],
+                            highlightColor: GameStyle.color(for: game.currentPlayer),
                             lastCell: game.moves.last?.board == index ? game.moves.last?.cell : nil,
                             onSelect: { onSelect(index, $0) }
                         )
@@ -500,6 +501,7 @@ private struct MiniBoardView: View {
     let result: GameResult
     let canInteract: Bool
     let isForced: Bool
+    let highlightColor: Color
     let lastCell: Int?
     let onSelect: (Int) -> Void
 
@@ -573,11 +575,11 @@ private struct MiniBoardView: View {
         }
         .overlay {
             // Claimed boards are color-filled, with NO border or inner ring.
-            // The teal double outline is reserved for the board you must play.
+            // The current player's double outline marks the required board.
             if result == .ongoing {
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
                     .strokeBorder(
-                        isForced ? GameStyle.x : GameStyle.outline,
+                        isForced ? highlightColor : GameStyle.outline,
                         lineWidth: isForced ? 3.5 : 1
                     )
                     .allowsHitTesting(false)
@@ -595,7 +597,7 @@ private struct MiniBoardView: View {
                     .allowsHitTesting(false)
             }
         }
-        .shadow(color: isForced ? GameStyle.x.opacity(0.32) : .clear, radius: isForced ? 8 : 0)
+        .shadow(color: isForced ? highlightColor.opacity(0.32) : .clear, radius: isForced ? 8 : 0)
         .animation(.easeOut(duration: 0.22), value: isForced)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(BoardPosition.names[index]) board, \(boardDescription)")
@@ -606,7 +608,7 @@ private struct MiniBoardView: View {
         case .won(let mark):
             return GameStyle.color(for: mark).opacity(colorScheme == .dark ? 0.46 : 0.34)
         case .drawn: return GameStyle.muted.opacity(0.12)
-        case .ongoing: return isForced ? GameStyle.x.opacity(0.07) : GameStyle.tile
+        case .ongoing: return isForced ? highlightColor.opacity(0.07) : GameStyle.tile
         }
     }
 

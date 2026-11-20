@@ -78,7 +78,7 @@ See [App Store setup](docs/app-store/SETUP.md), [store text draft](docs/app-stor
 
 - Fresh install: welcome screen appears on opening; try **Skip** and confirm the game is playable without Game Center or ad SDK prompts appearing over onboarding.
 - Relaunch after skipping: welcome does not reappear. Reopen it through **More → Interactive tutorial**.
-- Replay tutorial: tap an opening X, confirm the teal outline switches to the square's matching board, and O can only be placed inside that board.
+- Replay tutorial: tap an opening X, confirm the coral outline marks the matching board for O's turn, and O can only be placed inside that board.
 - Closed-board example: only one center tile is labeled **WON**; any other board advances to the explanation of winning three small boards in a row.
 - Complete the tour, verify the real match is untouched, then relaunch and confirm onboarding remains dismissed.
 - Test Light, Dark, VoiceOver and **Reduce Motion**; on smaller iPhones the layout scrolls while **Skip** and **Let's play** remain reachable.
