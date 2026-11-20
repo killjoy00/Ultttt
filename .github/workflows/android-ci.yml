@@ -1,0 +1,63 @@
+name: Android CI
+on:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - name: Install Android SDK 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Unit tests, debug APK, and optimized release App Bundle
+        run: gradle --no-daemon -p android testDebugUnitTest assembleDebug bundleRelease
+      - name: Verify release mapping and bundled native symbols
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          MAPPING=android/app/build/outputs/mapping/release/mapping.txt
+          test -s "$AAB"
+          test -s "$MAPPING"
+          unzip -Z1 "$AAB" > "$RUNNER_TEMP/ultttt-bundle-files.txt"
+          grep -Fq 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map' "$RUNNER_TEMP/ultttt-bundle-files.txt"
+          echo "R8 mapping exists and is embedded in the release App Bundle."
+          if grep -q '^BUNDLE-METADATA/com.android.tools.build.debugsymbols/' "$RUNNER_TEMP/ultttt-bundle-files.txt"; then
+            echo "Native debug symbols are embedded in the release App Bundle."
+          elif grep -q '^base/lib/' "$RUNNER_TEMP/ultttt-bundle-files.txt"; then
+            echo "::warning::AAB contains native libraries but no native debug symbols could be extracted. Some dependencies may be pre-stripped."
+          else
+            echo "AAB contains no bundled native libraries requiring debug metadata."
+          fi
+      - name: Verify packaged launcher icon and app name
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/ultttt-badging.txt"
+          grep -q "^application-icon" "$RUNNER_TEMP/ultttt-badging.txt"
+          grep -Fq "Ultimate Tic/Tac/Toe" "$RUNNER_TEMP/ultttt-badging.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ultimate-ttt-android-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
