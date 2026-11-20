@@ -16,6 +16,8 @@ val liveAdMobConfigured = Regex("^ca-app-pub-1217971050094766~[0-9]{10}$").match
     Regex("^ca-app-pub-1217971050094766/[0-9]{10}$").matches(liveAdMobBannerId)
 if ((liveAdMobAppId.isNotEmpty() || liveAdMobBannerId.isNotEmpty()) && !liveAdMobConfigured)
     throw GradleException("Both valid Ultttt Android AdMob app and banner unit IDs must be supplied together.")
+if (providers.environmentVariable("ULTTTT_REQUIRE_LIVE_ADMOB").orNull == "true" && !liveAdMobConfigured)
+    throw GradleException("Production release requires real Android AdMob app and banner unit IDs.")
 val configuredAppId = if (liveAdMobConfigured) liveAdMobAppId else "ca-app-pub-3940256099942544~3347511713"
 val configuredBannerId = if (liveAdMobConfigured) liveAdMobBannerId else ""
 
@@ -89,5 +91,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.android.billingclient:billing:9.1.0")
+    // The Privacy Sandbox ad-services transitive dependency requests Guava 31.1;
+    // use a maintained Android variant instead of pulling an obsolete artifact.
+    implementation("com.google.guava:guava:33.7.2-android")
     testImplementation("junit:junit:4.13.2")
 }
