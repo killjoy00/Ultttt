@@ -10,8 +10,13 @@ This is a **native Kotlin / Jetpack Compose** port in the same repository as the
 - Optional first-run introduction; no third-party prompts on first launch
 - Automated Android API 36 build and rules tests in \`.github/workflows/android-ci.yml\`
 
+## Launcher icon / Play policy
+- The installed Android icon is now a bundled adaptive icon based on the same nine-board teal/coral artwork as `android/play-store/generate_assets.py`'s Play Store icon. `AndroidManifest.xml` explicitly sets `android:icon` and `android:roundIcon` to `@mipmap/ic_launcher` so Android cannot fall back to a default platform icon.
+- **When changing the icon, update both the on-device drawable and the Google Play high-resolution listing icon together.** Keep the Play title and `@string/app_name` identical: **Ultimate Tic/Tac/Toe**.
+- Android CI validates the compiled APK includes a launcher icon, preventing another default-system-icon submission.
+
 ## Still required before release
-- Upgrade introductory guidance to the full interactive iOS tutorial; improve screen reader coverage, sound/haptics, icon and visual QA.
+- Upgrade introductory guidance to the full interactive iOS tutorial; improve screen reader coverage, sound/haptics, visual QA.
 - Set up Play Games Services v2 for achievements and leaderboards. Its former multiplayer APIs **do not exist**; build a separate asynchronous multiplayer service if online play is needed.
 - Integrate AdMob with UMP consent and platform-specific live Android identifiers. Until then **no ads**. Add Google Play Billing for Remove Ads only when testable and approved; **do not** advertise an unavailable purchase.
 - Verify privacy / data safety, Android App Bundle signing, genuine store screenshots, Play Console listing and accessibility/device QA.
