@@ -27,8 +27,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Unit tests and debug APK
-        run: gradle --no-daemon -p android testDebugUnitTest assembleDebug
+      - name: Unit tests, debug APK, and optimized release App Bundle
+        run: gradle --no-daemon -p android testDebugUnitTest assembleDebug bundleRelease
+      - name: Verify release mapping and bundled native symbols
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          MAPPING=android/app/build/outputs/mapping/release/mapping.txt
+          test -s "$AAB"
+          test -s "$MAPPING"
+          unzip -Z1 "$AAB" > "$RUNNER_TEMP/ultttt-bundle-files.txt"
+          grep -Fq 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map' "$RUNNER_TEMP/ultttt-bundle-files.txt"
+          echo "R8 mapping exists and is embedded in the release App Bundle."
+          if grep -q '^BUNDLE-METADATA/com.android.tools.build.debugsymbols/' "$RUNNER_TEMP/ultttt-bundle-files.txt"; then
+            echo "Native debug symbols are embedded in the release App Bundle."
+          elif grep -q '^base/lib/' "$RUNNER_TEMP/ultttt-bundle-files.txt"; then
+            echo "::warning::AAB contains native libraries but no native debug symbols could be extracted. Some dependencies may be pre-stripped."
+          else
+            echo "AAB contains no bundled native libraries requiring debug metadata."
+          fi
       - name: Verify packaged launcher icon and app name
         shell: bash
         run: |
