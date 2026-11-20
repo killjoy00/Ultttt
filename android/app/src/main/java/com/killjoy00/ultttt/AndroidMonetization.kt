@@ -157,9 +157,13 @@ class AndroidMonetization(private val activity: ComponentActivity) : PurchasesUp
             return
         }
         val offer = details.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: return
+        val offerToken = offer.offerToken ?: run {
+            purchaseMessage = "Google Play doesn't offer this purchase yet."
+            return
+        }
         val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(details)
-            .setOfferToken(offer.offerToken)
+            .setOfferToken(offerToken)
             .build()
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productParams)).build()
