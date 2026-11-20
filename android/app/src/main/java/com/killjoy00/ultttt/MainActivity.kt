@@ -67,15 +67,28 @@ private val Midnight = Color(0xFF111E30)
 private val LightBackground = Color(0xFFF5F7F6)
 
 class MainActivity : ComponentActivity() {
+    private lateinit var monetization: AndroidMonetization
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = LocalSessionStore(applicationContext)
-        setContent { UltimateApp(store) }
+        monetization = AndroidMonetization(this)
+        setContent { UltimateApp(store, monetization) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::monetization.isInitialized) monetization.refreshPurchases()
+    }
+
+    override fun onDestroy() {
+        if (::monetization.isInitialized) monetization.close()
+        super.onDestroy()
     }
 }
 
 @Composable
-private fun UltimateApp(store: LocalSessionStore) {
+private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetization) {
     var session by remember { mutableStateOf(store.load()) }
     var appearance by remember { mutableStateOf(store.appearance) }
     var showNewGame by remember { mutableStateOf(false) }
@@ -88,6 +101,10 @@ private fun UltimateApp(store: LocalSessionStore) {
     fun update(next: GameSession) {
         session = next
         store.save(next)
+    }
+
+    LaunchedEffect(tutorialStep) {
+        if (tutorialStep < 0) monetization.onGameplayReady()
     }
 
     // Only computers play O, and invalidated effects never submit stale moves.
@@ -121,7 +138,8 @@ private fun UltimateApp(store: LocalSessionStore) {
         onSurface = Color(0xFF152736), onBackground = Color(0xFF152736)
     )
     MaterialTheme(colorScheme = scheme) {
-        Surface(modifier = Modifier.fillMaxSize(), color = scheme.background) {
+        Column(Modifier.fillMaxSize()) {
+            Surface(modifier = Modifier.weight(1f), color = scheme.background) {
             if (replaying) {
                 val replay = Game.replay(session.game.moves.take(replayIndex)) ?: Game()
                 Column(
@@ -233,10 +251,14 @@ private fun UltimateApp(store: LocalSessionStore) {
                             modifier = Modifier.weight(1f)
                         ) { Text("Replay") }
                     }
-                    Text("Play offline. Online games and ads are not yet enabled.",
+                    Text("Play offline. Online multiplayer is not yet available.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
+            }
+            if (tutorialStep < 0 && !replaying && monetization.canShowBanner &&
+                !monetization.removeAdsOwned) {
+                BottomGameBanner()
             }
         }
 
@@ -304,15 +326,39 @@ private fun UltimateApp(store: LocalSessionStore) {
 
         if (showSettings) AlertDialog(
             onDismissRequest = { showSettings = false },
-            title = { Text("Appearance") },
+            title = { Text("Settings") },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Appearance", style = MaterialTheme.typography.titleMedium)
                     Appearance.entries.forEach { option ->
                         FilterChip(
                             selected = appearance == option,
                             onClick = { appearance = option; store.appearance = option },
                             label = { Text(option.name.lowercase().replaceFirstChar { it.uppercase() }) }
                         )
+                    }
+                    Text("Advertising", style = MaterialTheme.typography.titleMedium)
+                    if (monetization.removeAdsOwned) {
+                        Text("Ads removed. Thank you for supporting the game.")
+                    } else if (monetization.removeAdsPrice != null) {
+                        Button(onClick = { monetization.buyRemoveAds() }) {
+                            Text("Remove ads · " + monetization.removeAdsPrice)
+                        }
+                    } else {
+                        Text("The optional Remove Ads purchase is not available yet.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    TextButton(onClick = { monetization.refreshPurchases() }) {
+                        Text("Restore purchases")
+                    }
+                    if (monetization.privacyOptionsRequired) {
+                        TextButton(onClick = { monetization.showPrivacyOptions() }) {
+                            Text("Advertising privacy choices")
+                        }
+                    }
+                    monetization.purchaseMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },
