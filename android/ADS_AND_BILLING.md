@@ -34,11 +34,10 @@ Allow Google Play and AdMob time to crawl/review the new store website link.
 
 ## Mandatory identifiers and Google Play setup before production version code 4
 
-**Do not confuse these values with the app-ads.txt publisher ID.** Two values
-must be copied from **AdMob → Apps → Ultimate Tic/Tac/Toe (Android)**:
+**Do not confuse these values with the app-ads.txt publisher ID.** Two values were supplied and validated for **AdMob → Apps → Ultimate Tic/Tac/Toe (Android)**:
 
-1. **Android AdMob App ID:** `ca-app-pub-1217971050094766~NNNNNNNNNN`
-2. **Android banner Ad Unit ID:** `ca-app-pub-1217971050094766/NNNNNNNNNN`
+1. **Android AdMob App ID:** `ca-app-pub-1217971050094766~2079128067`
+2. **Android banner Ad Unit ID:** `ca-app-pub-1217971050094766/7292373402`
 
 Pass them to Gradle as environment variables `ULTTTT_ADMOB_ANDROID_APP_ID` and
 `ULTTTT_ADMOB_ANDROID_BANNER_UNIT_ID` through the secure release runner.
@@ -48,14 +47,13 @@ remains ad-disabled, so no accidental real-ad request or unconfigured ad startup
 
 Google Play rejected creating a one-time product for the currently published app with the message "request billing permission". The Android source now explicitly declares `com.android.vending.BILLING`; an **internal-only code-3 bundle** uses the shared EZTrivia signing key to register this permission before product creation. Do not enable live ads in that internal build.
 
-After the billing-enabled bundle is registered, configure a **one-time non-consumable product**
-`com.killjoy00.ultttt.remove_ads` with an agreed price, localization, and activated
-purchase option at US $1.99. A configured Google Play Billing product is required before advertising a
+The code-3 internal signed bundle has successfully registered the Billing permission, and the Google Play one-time product is **ACTIVE**, with a US price of $1.99 and regional pricing for 174 regions: **
+`com.killjoy00.ultttt.remove_ads`**. A configured Google Play Billing product is required before advertising a
 working Remove Ads purchase. Verify purchase, cancellation, pending state, refund,
 reinstall and restoration on a tester account.
 
-Complete the Play Console **Contains ads** declaration, update **Data safety** disclosures
-for Google Mobile Ads/UMP/Billing, review age/target-audience restrictions, and ensure
+Complete the Play Console **Contains ads** declaration. The Google Play Data safety declaration for AdMob 25.5.0 and Play Billing 9.1.0 was **accepted by Google (HTTP 204)**. Review that disclosure
+against the app's behavior, review age/target-audience restrictions, and ensure
 AdMob Privacy & messaging regional consent forms are configured before submitting production code 4.
 Publish the revised Android privacy policy before the monetized build.
 
