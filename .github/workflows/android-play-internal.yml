@@ -85,14 +85,21 @@ jobs:
         run: |
           set -euo pipefail
           gradle --no-daemon -p android testDebugUnitTest bundleRelease
-          test -s android/app/build/outputs/bundle/release/app-release.aab
-          jarsigner -verify android/app/build/outputs/bundle/release/app-release.aab
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          MAPPING=android/app/build/outputs/mapping/release/mapping.txt
+          test -s "$AAB"
+          test -s "$MAPPING"
+          unzip -Z1 "$AAB" | grep -F 'BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map'
+          jarsigner -verify "$AAB"
 
       - name: Save tested release bundle
         uses: actions/upload-artifact@v4
         with:
           name: ultttt-android-play-v${{ inputs.version_code }}
-          path: android/app/build/outputs/bundle/release/*.aab
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/mapping/release/mapping.txt
+            android/app/build/outputs/native-debug-symbols/release/*.zip
           if-no-files-found: error
           retention-days: 30
 
