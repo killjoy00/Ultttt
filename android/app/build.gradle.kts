@@ -93,6 +93,6 @@ dependencies {
     implementation("com.android.billingclient:billing:9.1.0")
     // The Privacy Sandbox ad-services transitive dependency requests Guava 31.1;
     // use a maintained Android variant instead of pulling an obsolete artifact.
-    implementation("com.google.guava:guava:33.7.2-android")
+    implementation("com.google.guava:guava:33.6.0-android")
     testImplementation("junit:junit:4.13.2")
 }
