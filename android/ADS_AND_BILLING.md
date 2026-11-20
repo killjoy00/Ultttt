@@ -47,9 +47,7 @@ remains ad-disabled, so no accidental real-ad request or unconfigured ad startup
 
 Google Play rejected creating a one-time product for the currently published app with the message "request billing permission". The Android source now explicitly declares `com.android.vending.BILLING`; an **internal-only code-3 bundle** uses the shared EZTrivia signing key to register this permission before product creation. Do not enable live ads in that internal build.
 
-The code-3 internal signed bundle has successfully registered the Billing permission, and the Google Play one-time product is **ACTIVE**, with a US price of $1.99 and regional pricing for 174 regions: **
-`com.killjoy00.ultttt.remove_ads`**. A configured Google Play Billing product is required before advertising a
-working Remove Ads purchase. Verify purchase, cancellation, pending state, refund,
+The code-3 internal signed bundle successfully registered the Billing permission. The one-time Google Play product `com.killjoy00.ultttt.remove_ads` is **ACTIVE**, priced at **US $1.99**, with regional pricing configured for 174 regions. This purchase must remain available when ads are enabled. Verify purchase, cancellation, pending state, refund,
 reinstall and restoration on a tester account.
 
 Complete the Play Console **Contains ads** declaration. The Google Play Data safety declaration for AdMob 25.5.0 and Play Billing 9.1.0 was **accepted by Google (HTTP 204)**. Review that disclosure
