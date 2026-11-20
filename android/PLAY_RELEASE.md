@@ -1,5 +1,14 @@
 # Ultimate Tic/Tac/Toe: Android Play Console launch
 
+## Google Play rejection remediation: version code 2
+
+The version-code-1 upload was rejected under the Misleading Claims policy because its installed Android launcher icon differed from the high-resolution Play listing icon. The corrected build includes the nine-board launcher artwork and verifies the packaged icon. Submit a **new AAB with version code 2 (version name 1.0.1)**, not the old code-1 bundle.
+
+Release builds now enable R8 code optimization and resource shrinking, generating `android/app/build/outputs/mapping/release/mapping.txt` and embedding its deobfuscation mapping inside the AAB. The build also requests `SYMBOL_TABLE` native debug metadata for libraries with available symbols. If a dependency ships with native symbols already stripped, Google Play can still warn: those symbols cannot be reconstructed by the app build. Native warnings are advisory, not publishing blockers. CI validates that the actual AAB contains the R8 mapping and reports native symbol availability.
+
+Google Play automatically reads supported deobfuscation/symbol metadata from an AAB built with current Android Gradle Plugin. Keep R8's exact mapping paired with the corresponding version; don't upload a mapping from another build.
+
+
 This repository already builds a **debug APK** on Android CI. That APK is only for testers; it is not a Play Store production release. The separate **Ultimate TTT - Google Play Internal Testing** workflow is `workflow_dispatch` only, restricted to `main`, requires an explicit upload confirmation, and only publishes to the **internal** track. It does not auto-publish to closed testing or production.
 
 ## Android identity
