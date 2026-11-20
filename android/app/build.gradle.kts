@@ -8,6 +8,18 @@ val releaseVersionCode = providers.environmentVariable("ULTTTT_VERSION_CODE").or
 val releaseVersionName = providers.environmentVariable("ULTTTT_VERSION_NAME").orNull
 val uploadStorePath = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE_PATH").orNull
 val uploadStorePassword = providers.environmentVariable("ANDROID_UPLOAD_KEY_PASSWORD").orNull
+// Live AdMob identifiers are NOT inferred from the publisher ID. Supply them at release time.
+// A release built without both IDs compiles safely but cannot request live advertisements.
+val liveAdMobAppId = providers.environmentVariable("ULTTTT_ADMOB_ANDROID_APP_ID").orNull.orEmpty().trim()
+val liveAdMobBannerId = providers.environmentVariable("ULTTTT_ADMOB_ANDROID_BANNER_UNIT_ID").orNull.orEmpty().trim()
+val liveAdMobConfigured = Regex("^ca-app-pub-1217971050094766~[0-9]{10}$").matches(liveAdMobAppId) &&
+    Regex("^ca-app-pub-1217971050094766/[0-9]{10}$").matches(liveAdMobBannerId)
+if ((liveAdMobAppId.isNotEmpty() || liveAdMobBannerId.isNotEmpty()) && !liveAdMobConfigured)
+    throw GradleException("Both valid Ultttt Android AdMob app and banner unit IDs must be supplied together.")
+if (providers.environmentVariable("ULTTTT_REQUIRE_LIVE_ADMOB").orNull == "true" && !liveAdMobConfigured)
+    throw GradleException("Production release requires real Android AdMob app and banner unit IDs.")
+val configuredAppId = if (liveAdMobConfigured) liveAdMobAppId else "ca-app-pub-3940256099942544~3347511713"
+val configuredBannerId = if (liveAdMobConfigured) liveAdMobBannerId else ""
 
 android {
     namespace = "com.killjoy00.ultttt"
@@ -17,9 +29,12 @@ android {
         applicationId = "com.killjoy00.ultttt"
         minSdk = 26
         targetSdk = 36
-        versionCode = releaseVersionCode?.toIntOrNull() ?: 2
-        versionName = releaseVersionName ?: "1.0.1"
+        versionCode = releaseVersionCode?.toIntOrNull() ?: 3
+        versionName = releaseVersionName ?: "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["admobAppId"] = configuredAppId
+        buildConfigField("boolean", "ADMOB_CONFIGURED", liveAdMobConfigured.toString())
+        buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$configuredBannerId\"")
     }
 
     signingConfigs {
@@ -35,6 +50,11 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
+            buildConfigField("boolean", "ADMOB_CONFIGURED", "true")
+            buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"ca-app-pub-3940256099942544/9214589741\"")
+        }
         release {
             // Enable R8 so the AAB includes a mapping for readable crash reports.
             isMinifyEnabled = true
@@ -55,7 +75,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
@@ -68,5 +88,11 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("com.google.android.gms:play-services-ads:25.5.0")
+    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
+    implementation("com.android.billingclient:billing:9.1.0")
+    // The Privacy Sandbox ad-services transitive dependency requests Guava 31.1;
+    // use a maintained Android variant instead of pulling an obsolete artifact.
+    implementation("com.google.guava:guava:33.6.0-android")
     testImplementation("junit:junit:4.13.2")
 }

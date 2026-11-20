@@ -1,6 +1,6 @@
 # Ultimate Tic/Tac/Toe for Android (work in progress)
 
-This is a **native Kotlin / Jetpack Compose** port in the same repository as the SwiftUI app. The first delivery implements the offline, playable foundation. It is **not yet Google Play ready**.
+This is a **native Kotlin / Jetpack Compose** port in the same repository as the SwiftUI app. The offline playable foundation is released; Android AdMob banner and Remove Ads Billing support are being prepared for the next release.
 
 ## Current capabilities
 - Same immutable forced-board rules and legal move validation as Swift \`UltimateGame\`
@@ -15,10 +15,10 @@ This is a **native Kotlin / Jetpack Compose** port in the same repository as the
 - **When changing the icon, update both the on-device drawable and the Google Play high-resolution listing icon together.** Keep the Play title and `@string/app_name` identical: **Ultimate Tic/Tac/Toe**.
 - Android CI validates the compiled APK includes a launcher icon, preventing another default-system-icon submission.
 
-## Still required before release
+## Still required before the ads-and-purchases release
 - Upgrade introductory guidance to the full interactive iOS tutorial; improve screen reader coverage, sound/haptics, visual QA.
 - Set up Play Games Services v2 for achievements and leaderboards. Its former multiplayer APIs **do not exist**; build a separate asynchronous multiplayer service if online play is needed.
-- Integrate AdMob with UMP consent and platform-specific live Android identifiers. Until then **no ads**. Add Google Play Billing for Remove Ads only when testable and approved; **do not** advertise an unavailable purchase.
+- AdMob banners, UMP consent, and Play Billing Remove Ads are now implemented on the Android code branch. **Live ads remain disabled until the actual Android AdMob app ID and banner unit ID are provided, the Remove Ads one-time product is configured, and the new build passes Play review.** Details: [Android ads and Billing](ADS_AND_BILLING.md).
 - Verify privacy / data safety, Android App Bundle signing, genuine store screenshots, Play Console listing and accessibility/device QA.
 - Publish through internal testing first, then closed testing and production access as applicable. The signed bundle and uploading must use GitHub Actions secrets, not local developer machines.
 
