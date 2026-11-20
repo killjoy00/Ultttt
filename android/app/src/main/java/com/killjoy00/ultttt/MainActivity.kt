@@ -398,6 +398,7 @@ private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetizat
             )
         }
     }
+    }
 }
 
 @Composable
