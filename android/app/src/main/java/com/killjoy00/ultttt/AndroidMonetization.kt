@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -282,16 +283,26 @@ fun BottomGameBanner() {
     ) {
         if (widthPixels > 0 && BuildConfig.ADMOB_BANNER_UNIT_ID.isNotEmpty()) {
             val widthDp = with(density) { widthPixels.toDp().value.toInt().coerceAtLeast(1) }
+            val adSize = remember(context, widthDp) {
+                AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, widthDp)
+            }
+            // Reserve the actual adaptive-banner height in the root Column, even
+            // while the network request is pending; otherwise board controls can
+            // jump when an ad arrives on small phones.
+            val adHeight = with(density) { adSize.getHeightInPixels(context).toDp() }
             key(widthDp) {
                 val adView = remember(context, widthDp) {
                     AdView(context).apply {
                         adUnitId = BuildConfig.ADMOB_BANNER_UNIT_ID
-                        setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, widthDp))
+                        setAdSize(adSize)
                         loadAd(AdRequest.Builder().build())
                     }
                 }
                 DisposableEffect(adView) { onDispose { adView.destroy() } }
-                AndroidView(factory = { adView })
+                AndroidView(
+                    factory = { adView },
+                    modifier = Modifier.fillMaxWidth().height(adHeight)
+                )
             }
         }
     }
