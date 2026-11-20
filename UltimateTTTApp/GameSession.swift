@@ -103,8 +103,10 @@ final class GameSession: ObservableObject {
         for (board, cell) in moves {
             precondition(preview.play(Move(board: board, cell: cell)))
         }
-        // Six claimed boards (three for each side) plus a teal-only
-        // destination highlight in the still-playable top-left board.
+        // Six claimed boards (three for each side), with a forced destination
+        // on O's turn to verify the coral highlight in both appearances.
+        precondition(preview.play(Move(board: 0, cell: 0)))
+        assert(preview.currentPlayer == .o)
         assert(preview.legalBoards == [0])
         assert(preview.boardResults.filter { $0 == .won(.x) }.count == 3)
         assert(preview.boardResults.filter { $0 == .won(.o) }.count == 3)
