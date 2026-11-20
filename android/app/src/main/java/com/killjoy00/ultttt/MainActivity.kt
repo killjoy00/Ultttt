@@ -323,7 +323,7 @@ private fun UltimateApp(store: LocalSessionStore) {
             val titles = listOf("Nine boards. One big win.", "Your move chooses their board.", "Win three boards in a row.")
             val explanations = listOf(
                 "Ultimate Tic/Tac/Toe is nine small games in one. Tap any open square to place your X.",
-                "The square you choose sends the other player to the matching mini-board. That board has a teal outline.",
+                "The square you choose sends the other player to the matching mini-board. That board has an outline in the next player's color.",
                 "Win a mini-board with three in a row. Win three mini-boards in a row to take the whole game. If your destination is already finished, you may play in any unfinished board."
             )
             AlertDialog(
@@ -393,7 +393,9 @@ private fun MiniBoard(
         Outcome.DRAW -> if (isDark) Color(0xFF344257) else Color(0xFFE2E7EA)
         Outcome.ONGOING -> MaterialTheme.colorScheme.surface
     }
-    val stroke = if (forced) Teal else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.13f)
+    val turnColor = if (game.currentPlayer == Mark.X) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.secondary
+    val stroke = if (forced) turnColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.13f)
     val strokeWidth = if (forced) 3.dp else if (status == Outcome.ONGOING) 1.dp else 0.dp
     val shape = RoundedCornerShape(8.dp)
     Box(
