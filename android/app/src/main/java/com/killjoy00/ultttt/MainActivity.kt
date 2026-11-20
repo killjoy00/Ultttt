@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -138,7 +139,9 @@ private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetizat
         onSurface = Color(0xFF152736), onBackground = Color(0xFF152736)
     )
     MaterialTheme(colorScheme = scheme) {
-        Column(Modifier.fillMaxSize()) {
+        // Reserve a separate bottom slot for the banner. Insets keep ads clear of
+        // Android's gesture/navigation bar on edge-to-edge devices.
+        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Surface(modifier = Modifier.weight(1f), color = scheme.background) {
             if (replaying) {
                 val replay = Game.replay(session.game.moves.take(replayIndex)) ?: Game()
@@ -256,11 +259,14 @@ private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetizat
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
+            } // End the game Surface. Its contents must not draw over the ad slot.
+
+            // A measured sibling after the weighted Surface stays pinned to
+            // the screen bottom and never overlaps the scrollable 9x9 board.
             if (tutorialStep < 0 && !replaying && monetization.canShowBanner &&
                 !monetization.removeAdsOwned) {
                 BottomGameBanner()
             }
-        }
 
         if (showNewGame) {
             var nextMode by remember { mutableStateOf(session.mode) }
