@@ -3,6 +3,7 @@ package com.killjoy00.ultttt
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 enum class GameMode { SOLO, TWO_PLAYER }
 enum class Appearance { SYSTEM, LIGHT, DARK }
@@ -14,7 +15,8 @@ data class GameSession(
     val xWins: Int = 0,
     val oWins: Int = 0,
     val draws: Int = 0,
-    val creditedFinishedGame: Boolean = false
+    val creditedFinishedGame: Boolean = false,
+    val gameId: String = UUID.randomUUID().toString()
 ) {
     fun play(move: Move): GameSession? {
         val next = game.play(move) ?: return null
@@ -29,7 +31,8 @@ data class GameSession(
     }
 
     fun newGame(nextMode: GameMode, nextDifficulty: Difficulty): GameSession =
-        copy(game = Game(), mode = nextMode, difficulty = nextDifficulty, creditedFinishedGame = false)
+        copy(game = Game(), mode = nextMode, difficulty = nextDifficulty,
+            creditedFinishedGame = false, gameId = UUID.randomUUID().toString())
 
     fun undoTurn(): GameSession? {
         if (game.moves.isEmpty()) return null
@@ -68,7 +71,8 @@ class LocalSessionStore(context: Context) {
                 xWins = saved.optInt("xWins", 0).coerceAtLeast(0),
                 oWins = saved.optInt("oWins", 0).coerceAtLeast(0),
                 draws = saved.optInt("draws", 0).coerceAtLeast(0),
-                creditedFinishedGame = game.result.isFinished && saved.optBoolean("creditedFinishedGame", false)
+                creditedFinishedGame = game.result.isFinished && saved.optBoolean("creditedFinishedGame", false),
+                gameId = saved.optString("gameId").ifBlank { UUID.randomUUID().toString() }
             )
         } catch (_: Exception) {
             GameSession()
@@ -89,6 +93,7 @@ class LocalSessionStore(context: Context) {
             .put("oWins", session.oWins)
             .put("draws", session.draws)
             .put("creditedFinishedGame", session.creditedFinishedGame)
+            .put("gameId", session.gameId)
         prefs.edit().putString("session", json.toString()).apply()
     }
 

@@ -3,10 +3,14 @@ on:
   push:
     paths:
       - 'android/**'
+      - 'Scripts/configure_play_games.py'
+      - 'Scripts/test_configure_play_games.py'
       - '.github/workflows/android-ci.yml'
   pull_request:
     paths:
       - 'android/**'
+      - 'Scripts/configure_play_games.py'
+      - 'Scripts/test_configure_play_games.py'
       - '.github/workflows/android-ci.yml'
   workflow_dispatch:
 
@@ -17,6 +21,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Test Play Games API provisioning (offline mocks)
+        run: python3 -m unittest discover -s Scripts -p 'test_configure_play_games.py' -v
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

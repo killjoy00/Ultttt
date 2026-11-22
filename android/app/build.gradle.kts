@@ -1,7 +1,34 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+// Play Games IDs are public identifiers, not API secrets. Fill android/play-games.properties
+// or use matching ULTTTT_* environment variables in release automation.
+val playGamesProperties = Properties().apply {
+    val configFile = rootProject.file("play-games.properties")
+    if (configFile.exists()) configFile.inputStream().use { load(it) }
+}
+fun playGamesConfig(key: String): String =
+    providers.environmentVariable("ULTTTT_" + key).orNull?.trim()
+        ?.takeIf { it.isNotEmpty() } ?: playGamesProperties.getProperty(key, "").trim()
+
+val playGamesAppId = playGamesConfig("PLAY_GAMES_APP_ID")
+require(playGamesAppId.isEmpty() || Regex("^[0-9]{8,20}$").matches(playGamesAppId)) {
+    "PLAY_GAMES_APP_ID must be the numeric game services project ID from Play Console."
+}
+val playGamesIds = listOf(
+    "PGS_FIRST_WIN_ID", "PGS_FIVE_WINS_ID", "PGS_TEN_WINS_ID",
+    "PGS_FIRST_ONLINE_WIN_ID", "PGS_TWENTY_FIVE_ONLINE_WINS_ID",
+    "PGS_ONLINE_WINS_LEADERBOARD_ID"
+)
+playGamesIds.forEach { key ->
+    require(playGamesConfig(key).isEmpty() || Regex("^[a-zA-Z0-9_-]+$").matches(playGamesConfig(key))) {
+        "Invalid Play Games resource ID in $key"
+    }
 }
 
 val releaseVersionCode = providers.environmentVariable("ULTTTT_VERSION_CODE").orNull
@@ -33,6 +60,12 @@ android {
         versionName = releaseVersionName ?: "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["admobAppId"] = configuredAppId
+        resValue("string", "game_services_project_id",
+            if (playGamesAppId.isNotEmpty()) playGamesAppId else "0000000000")
+        buildConfigField("boolean", "PLAY_GAMES_CONFIGURED", playGamesAppId.isNotEmpty().toString())
+        playGamesIds.forEach { key ->
+            buildConfigField("String", key, "\"${playGamesConfig(key)}\"")
+        }
         buildConfigField("boolean", "ADMOB_CONFIGURED", liveAdMobConfigured.toString())
         buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$configuredBannerId\"")
     }
@@ -89,6 +122,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("com.google.android.gms:play-services-ads:25.5.0")
+    implementation("com.google.android.gms:play-services-games-v2:22.1.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.android.billingclient:billing:9.1.0")
     // The Privacy Sandbox ad-services transitive dependency requests Guava 31.1;
