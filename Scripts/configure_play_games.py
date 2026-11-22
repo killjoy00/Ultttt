@@ -179,6 +179,8 @@ def main() -> int:
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9]{8,20}", args.game_id):
         parser.error("--game-id must be the numeric Play Games Services project ID")
+    if args.game_id == "406580555223":
+        parser.error("This is EZ Trivia\u0027s project ID; refusing to change another game")
     token = os.environ.get("GOOGLE_PLAY_ACCESS_TOKEN", "").strip()
     if not token:
         raise RuntimeError("GOOGLE_PLAY_ACCESS_TOKEN not set; use the existing Google Play service account")
