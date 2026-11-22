@@ -1,8 +1,7 @@
--- Ultimate Tic/Tac/Toe asynchronous matches on a DEDICATED Neon Postgres project.
--- All game access goes through a Neon Function; no Postgres URL or database API key in Android.
--- The Function hashes the per-install 256-bit guest credential to a lowercase SHA-256 identity.
--- This schema is private: no public Data API, no client table access, and no anonymous SQL.
--- Only run this on UTTT's dedicated Neon branch/database; not Polarized or foodfinder.
+-- Ultimate Tic/Tac/Toe asynchronous matches on a dedicated Neon Postgres project.
+-- Android calls only the Neon Function; no SQL credentials leave the server.
+-- The Function hashes per-install 256-bit guest credentials into user identities.
+-- No Neon Data API access and no client-side SQL permissions.
 
 create table if not exists public.ultttt_matches (
     id uuid primary key default gen_random_uuid(),
@@ -30,8 +29,7 @@ create index if not exists ultttt_matches_x_recent
 create index if not exists ultttt_matches_o_recent
     on public.ultttt_matches (player_o, updated_at desc);
 
--- Even if a Data API is accidentally enabled later, no client role may read this table.
--- The Neon Function uses a dedicated server-side DATABASE_URL with the table's owner role.
+-- No client role has access to private match rows; server's owner role uses Neon DATABASE_URL.
 alter table public.ultttt_matches enable row level security;
 revoke all on public.ultttt_matches from public;
 
@@ -113,7 +111,7 @@ declare
     v_user text := p_actor;
     v_match public.ultttt_matches;
 begin
-    if v_user is null or v_user !~ '^[0-9a-f]{64}
+    if v_user is null or v_user !~ '^[0-9a-f]{64}$' then raise exception 'Invalid guest session'; end if;
     if (select count(*) from public.ultttt_matches
         where player_x = v_user and status = 'waiting'
           and created_at > now() - interval '14 days') >= 10 then
@@ -134,7 +132,7 @@ declare
     v_user text := p_actor;
     v_match public.ultttt_matches;
 begin
-    if v_user is null then raise exception 'Sign in required'; end if;
+    if v_user is null or v_user !~ '^[0-9a-f]{64}$' then raise exception 'Invalid guest session'; end if;
     select * into v_match from public.ultttt_matches
         where status = 'waiting' and is_public
           and player_x <> v_user
@@ -171,7 +169,7 @@ declare
     v_user text := p_actor;
     v_match public.ultttt_matches;
 begin
-    if v_user is null then raise exception 'Sign in required'; end if;
+    if v_user is null or v_user !~ '^[0-9a-f]{64}$' then raise exception 'Invalid guest session'; end if;
     if p_invite_code is null or length(trim(p_invite_code)) <> 12
         or trim(p_invite_code) !~ '^[0-9A-Fa-f]{12}$' then
         raise exception 'Invalid invitation code';
@@ -205,7 +203,7 @@ declare
     v_mark integer;
     v_result integer;
 begin
-    if v_user is null then raise exception 'Sign in required'; end if;
+    if v_user is null or v_user !~ '^[0-9a-f]{64}$' then raise exception 'Invalid guest session'; end if;
     if p_expected_moves is null or p_expected_moves not between 0 and 81 then
         raise exception 'Expected move count is required';
     end if;
@@ -275,7 +273,7 @@ begin
 end;
 $$;
 
--- Database-only entrypoints. Neon Functions must be deployed using the owner role.
+-- Restrict entrypoints to the database owner used by Neon Functions.
 revoke all on function public.ultttt_board_status(integer[],integer) from public;
 revoke all on function public.ultttt_game_status(integer[]) from public;
 revoke all on function public.ultttt_create_match(text) from public;
