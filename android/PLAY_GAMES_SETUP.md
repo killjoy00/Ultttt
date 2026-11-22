@@ -14,7 +14,7 @@ a separate secure match backend.
 - Track unique solo games and online wins separately; never count pass-and-play as
   a solo achievement, and never award two wins for an undo/re-win of one game.
 - Keep local gameplay functional when a Play Games account is unavailable.
-- The integration is **disabled** until the correct non-secret project ID is supplied.
+- The numeric project ID **517518057047** and all six generated resource IDs are now in `android/play-games.properties`.
 
 ## Play Console: do these once
 
@@ -30,14 +30,15 @@ a separate secure match backend.
    Setup → App integrity. Do **not** substitute the upload-key SHA-1. If you
    also sideload debug builds, add a separate debug credential with the debug
    signing SHA-1.
-4. **Automated: five achievements and one leaderboard.** The repository now contains
-   `Scripts/configure_play_games.py` and the GitHub Actions workflow **Ultimate
-   TTT - Play Games configuration (draft only)**. Once the numeric UTTT Play
-   Games project ID is supplied in `android/play-games-project-id.txt` on the
-   PR branch, the workflow authenticates with the existing Google Play
-   service account and creates only missing **draft** resources:
+4. **Completed via Google API: five achievements and one leaderboard.**
+   The existing Google Play service account is stored in the **EZTrivia**
+   GitHub repository, not the UTTT repository. The isolated workflow
+   `EZTrivia/.github/workflows/ultttt-play-games-provision.yml`
+   ran successfully in branch `automation/ultttt-play-games-20261121`,
+   run **44986983849**. The UTTT script `Scripts/configure_play_games.py`
+   remains available for future audits and idempotent provisioning.
 
-   | Name | Kind | When awarded |
+   | Name | Google resource type | When awarded |
    | --- | --- | --- |
    | First Win | Standard achievement | First win vs computer |
    | Five Wins | Standard achievement | Five wins vs computer |
@@ -46,16 +47,18 @@ a separate secure match backend.
    | 25 Online Wins | Standard achievement | Twenty-five confirmed online wins |
    | Online Wins | Leaderboard (integer, high to low) | Cumulative online wins |
 
-5. After success, the workflow returns Google's **real resource IDs** in an
-   artifact named `ultttt-play-games-public-ids`. Copy its generated
-   `android/play-games.properties` into the branch before merging. The
-   project ID and resource IDs are **public**, not Google API secrets.
-   Provisioning is safe to retry, reuses resources by exact English name,
-   and never publishes Play Games configuration or an Android build.
-6. To review without creating drafts, manually run the workflow with
-   `apply_draft=false`. An automatic run from the checked-in project ID
-   file provisions missing drafts. Do not use EZ Trivia's project number
-   or other games' resources.
+5. **Public configuration already committed:** `android/play-games.properties`
+   contains `PLAY_GAMES_APP_ID=517518057047` and all six Google-issued
+   resource IDs. Draft resources are separate from a Play Games publish
+   and remain unavailable to general players until testing and publication.
+
+6. **Asset review before publication:** Google Play Games achievement and
+   leaderboard icons require suitable artwork. The Play Games Publishing
+   API's image upload method is deprecated; artwork may need uploading or
+   replacement through Play Console. The **Google Play Store listing**
+   already contains six phone screenshots and one feature graphic, audited
+   with the existing service account on November 21, 2026.
+   These are different assets from Play Games icons.
 
 7. Under **Testers**, add your Google account, a second tester, and/or enable
    the **internal test track** for Play Games Services. Unpublished PGS apps
