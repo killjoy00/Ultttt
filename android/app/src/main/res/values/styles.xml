@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.UltimateTTT" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">#F5F7F6</item>
-        <item name="android:navigationBarColor">#F5F7F6</item>
-    </style>
+    <!-- WindowCompat.enableEdgeToEdge(window) configures system bars at runtime;
+         do not use deprecated status/navigation bar color theme attributes. -->
+    <style name="Theme.UltimateTTT" parent="android:style/Theme.Material.Light.NoActionBar" />
 </resources>
