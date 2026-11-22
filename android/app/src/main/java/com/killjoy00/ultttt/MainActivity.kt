@@ -72,6 +72,7 @@ private val LightBackground = Color(0xFFF5F7F6)
 class MainActivity : ComponentActivity() {
     private lateinit var monetization: AndroidMonetization
     private lateinit var playGames: AndroidPlayGames
+    private lateinit var onlineService: OnlineMatchService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +81,8 @@ class MainActivity : ComponentActivity() {
         val store = LocalSessionStore(applicationContext)
         monetization = AndroidMonetization(this)
         playGames = AndroidPlayGames(this)
-        setContent { UltimateApp(store, monetization, playGames) }
+        onlineService = OnlineMatchService(applicationContext)
+        setContent { UltimateApp(store, monetization, playGames, onlineService) }
     }
 
     override fun onResume() {
@@ -97,7 +99,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun UltimateApp(
-    store: LocalSessionStore, monetization: AndroidMonetization, playGames: AndroidPlayGames
+    store: LocalSessionStore, monetization: AndroidMonetization, playGames: AndroidPlayGames,
+    onlineService: OnlineMatchService
 ) {
     var session by remember { mutableStateOf(store.load()) }
     var appearance by remember { mutableStateOf(store.appearance) }
@@ -105,6 +108,7 @@ private fun UltimateApp(
     var showStatistics by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var tutorialStep by remember { mutableIntStateOf(if (store.tutorialCompleted) -1 else 0) }
+    var showOnline by remember { mutableStateOf(false) }
     var replaying by remember { mutableStateOf(false) }
     var replayIndex by remember { mutableIntStateOf(0) }
 
@@ -171,7 +175,9 @@ private fun UltimateApp(
         // Android's gesture/navigation bar on edge-to-edge devices.
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Surface(modifier = Modifier.weight(1f), color = scheme.background) {
-            if (replaying) {
+            if (showOnline) {
+                AndroidOnlineScreen(onlineService, playGames, onExit = { showOnline = false })
+            } else if (replaying) {
                 val replay = Game.replay(session.game.moves.take(replayIndex)) ?: Game()
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
@@ -282,9 +288,11 @@ private fun UltimateApp(
                             modifier = Modifier.weight(1f)
                         ) { Text("Replay") }
                     }
-                    Text("Play offline. Online multiplayer is not yet available.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Button(
+                        onClick = { showOnline = true },
+                        enabled = onlineService.isConfigured,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (onlineService.isConfigured) "Play online" else "Online play · coming soon") }
                 }
             }
             } // End the game Surface. Its contents must not draw over the ad slot.
@@ -460,7 +468,7 @@ private fun UltimateApp(
 }
 
 @Composable
-private fun BoardGrid(game: Game, enabled: Boolean, onMove: (Move) -> Unit) {
+internal fun BoardGrid(game: Game, enabled: Boolean, onMove: (Move) -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().aspectRatio(1f)
             .semantics { contentDescription = "Ultimate Tic Tac Toe board" },
