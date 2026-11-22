@@ -17,7 +17,7 @@ This is a **native Kotlin / Jetpack Compose** port in the same repository as the
 
 ## Still required before the ads-and-purchases release
 - Upgrade introductory guidance to the full interactive iOS tutorial; improve screen reader coverage, sound/haptics, visual QA.
-- Set up Play Games Services v2 for achievements and leaderboards. Its former multiplayer APIs **do not exist**; build a separate asynchronous multiplayer service if online play is needed.
+- Play Games Services v2 achievements and leaderboard are wired but remain disabled until you enter the actual Play-assigned IDs. See [activation instructions](PLAY_GAMES_SETUP.md). Its former multiplayer APIs **do not exist**; build a separate asynchronous multiplayer service if online play is needed.
 - AdMob banners, UMP consent, and Play Billing Remove Ads are now implemented on the Android code branch. **Live ads remain disabled until the actual Android AdMob app ID and banner unit ID are provided, the Remove Ads one-time product is configured, and the new build passes Play review.** Details: [Android ads and Billing](ADS_AND_BILLING.md).
 - Verify privacy / data safety, Android App Bundle signing, genuine store screenshots, Play Console listing and accessibility/device QA.
 - Publish through internal testing first, then closed testing and production access as applicable. The signed bundle and uploading must use GitHub Actions secrets, not local developer machines.
