@@ -8,7 +8,8 @@ create table if not exists public.ultttt_matches (
     id uuid primary key default gen_random_uuid(),
     invite_code text not null unique
         default upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 12)),
-    player_x text not null check (player_x ~ '^[0-9a-f]{64}
+    player_x text not null check (player_x ~ '^[0-9a-f]{64}$'),
+    player_o text check (player_o ~ '^[0-9a-f]{64}$'),
     is_public boolean not null default false,
     moves jsonb not null default '[]'::jsonb check (jsonb_typeof(moves) = 'array'),
     status text not null default 'waiting'
@@ -274,8 +275,7 @@ begin
 end;
 $$;
 
--- Database-only entrypoints. Neon Functions must be deployed using a role with
--- explicit ownership/permissions; no SQL helper is exposed to the public.
+-- Database-only entrypoints. Neon Functions must be deployed using the owner role.
 revoke all on function public.ultttt_board_status(integer[],integer) from public;
 revoke all on function public.ultttt_game_status(integer[]) from public;
 revoke all on function public.ultttt_create_match(text) from public;
