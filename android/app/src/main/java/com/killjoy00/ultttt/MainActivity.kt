@@ -69,17 +69,20 @@ private val LightBackground = Color(0xFFF5F7F6)
 
 class MainActivity : ComponentActivity() {
     private lateinit var monetization: AndroidMonetization
+    private lateinit var playGames: AndroidPlayGames
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = LocalSessionStore(applicationContext)
         monetization = AndroidMonetization(this)
-        setContent { UltimateApp(store, monetization) }
+        playGames = AndroidPlayGames(this)
+        setContent { UltimateApp(store, monetization, playGames) }
     }
 
     override fun onResume() {
         super.onResume()
         if (::monetization.isInitialized) monetization.refreshPurchases()
+        if (::playGames.isInitialized) playGames.refreshAuthentication()
     }
 
     override fun onDestroy() {
@@ -89,7 +92,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetization) {
+private fun UltimateApp(
+    store: LocalSessionStore, monetization: AndroidMonetization, playGames: AndroidPlayGames
+) {
     var session by remember { mutableStateOf(store.load()) }
     var appearance by remember { mutableStateOf(store.appearance) }
     var showNewGame by remember { mutableStateOf(false) }
@@ -100,12 +105,18 @@ private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetizat
     var replayIndex by remember { mutableIntStateOf(0) }
 
     fun update(next: GameSession) {
+        if (session.mode == GameMode.SOLO && session.game.result == Outcome.ONGOING &&
+            next.game.result == Outcome.X_WON && next.gameId == session.gameId
+        ) playGames.recordSoloWin(next.gameId)
         session = next
         store.save(next)
     }
 
     LaunchedEffect(tutorialStep) {
-        if (tutorialStep < 0) monetization.onGameplayReady()
+        if (tutorialStep < 0) {
+            monetization.onGameplayReady()
+            playGames.initializeAfterTutorial()
+        }
     }
 
     // Only computers play O, and invalidated effects never submit stale moves.
@@ -325,6 +336,21 @@ private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetizat
                     Text("Draws: " + session.draws)
                     Text("Moves in current game: " + session.game.moves.size)
                     Text("Scores are saved on this device.", style = MaterialTheme.typography.bodySmall)
+                    if (playGames.isConfigured) {
+                        Text(
+                            if (playGames.isAuthenticated) "Connected to Google Play Games"
+                            else "Google Play Games sign-in is not available.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text("Solo wins tracked for achievements: " + playGames.soloWins)
+                        Text("Online wins: " + playGames.onlineWins)
+                        OutlinedButton(onClick = { playGames.showAchievements() }) {
+                            Text("Play Games achievements")
+                        }
+                        OutlinedButton(onClick = { playGames.showLeaderboards() }) {
+                            Text("Online wins leaderboard")
+                        }
+                    }
                 }
             },
             confirmButton = { Button(onClick = { showStatistics = false }) { Text("Done") } }
@@ -369,6 +395,15 @@ private fun UltimateApp(store: LocalSessionStore, monetization: AndroidMonetizat
                 }
             },
             confirmButton = { Button(onClick = { showSettings = false }) { Text("Done") } }
+        )
+
+        if (playGames.message != null) AlertDialog(
+            onDismissRequest = playGames::clearMessage,
+            title = { Text("Google Play Games") },
+            text = { Text(playGames.message.orEmpty()) },
+            confirmButton = {
+                TextButton(onClick = playGames::clearMessage) { Text("OK") }
+            }
         )
 
         if (tutorialStep >= 0) {
