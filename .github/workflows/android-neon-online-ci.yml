@@ -1,0 +1,95 @@
+name: UTTT Neon online backend checks
+
+on:
+  push:
+    branches:
+      - feature/android-online-turns
+    paths:
+      - android/online-backend/**
+      - android/app/src/main/java/com/killjoy00/ultttt/OnlineMatchService.kt
+      - .github/workflows/android-neon-online-ci.yml
+  pull_request:
+    paths:
+      - android/online-backend/**
+      - android/app/src/main/java/com/killjoy00/ultttt/OnlineMatchService.kt
+      - .github/workflows/android-neon-online-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  neon-backend:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ult_test
+          POSTGRES_USER: ult_test
+          POSTGRES_DB: ult_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ult_test -d ult_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: ult_test
+      PGPASSWORD: ult_test
+      PGDATABASE: ult_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test locked Node.js backend dependencies and API
+        working-directory: android/online-backend
+        run: |
+          set -euo pipefail
+          if test -f package-lock.json; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            npm install --ignore-scripts --no-audit --no-fund
+          fi
+          npm test
+      - name: Install PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+      - name: Validate private Neon schema, turns and invites against PostgreSQL 17
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f android/online-backend/schema.sql
+          psql -v ON_ERROR_STOP=1 -f android/online-backend/schema_smoke.sql
+          psql -v ON_ERROR_STOP=1 -c "select relrowsecurity from pg_class where oid = 'public.ultttt_matches'::regclass" | grep -w t
+          echo "Neon schema and offline multiplayer smoke passed."
+
+  lockfile:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/android-online-turns'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/android-online-turns
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Commit deterministic npm lockfile if absent or updated
+        working-directory: android/online-backend
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          if ! git diff --quiet -- package-lock.json || ! git ls-files --error-unmatch package-lock.json > /dev/null 2>&1; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package-lock.json
+            git commit -m 'chore(android-online): pin Neon backend dependency tree'
+            git push origin HEAD:feature/android-online-turns
+          fi

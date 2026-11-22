@@ -31,6 +31,19 @@ playGamesIds.forEach { key ->
     }
 }
 
+// Only a public Neon Function URL is embedded. All PostgreSQL credentials stay server-side.
+val onlineProperties = Properties().apply {
+    val configFile = rootProject.file("online.properties")
+    if (configFile.exists()) configFile.inputStream().use { load(it) }
+}
+val onlineFunctionUrl =
+    (providers.environmentVariable("ULTTTT_ONLINE_NEON_FUNCTION_URL").orNull
+        ?: onlineProperties.getProperty("ONLINE_NEON_FUNCTION_URL", "")).trim().trimEnd('/')
+val onlineConfigured = Regex("^https://[a-zA-Z0-9.-]+\\.neon\\.tech$").matches(onlineFunctionUrl)
+if (onlineFunctionUrl.isNotBlank() && !onlineConfigured) {
+    throw GradleException("Online multiplayer needs a public HTTPS Neon Function URL (no database key).")
+}
+
 val releaseVersionCode = providers.environmentVariable("ULTTTT_VERSION_CODE").orNull
 val releaseVersionName = providers.environmentVariable("ULTTTT_VERSION_NAME").orNull
 val uploadStorePath = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE_PATH").orNull
@@ -63,6 +76,8 @@ android {
         resValue("string", "game_services_project_id",
             if (playGamesAppId.isNotEmpty()) playGamesAppId else "0000000000")
         buildConfigField("boolean", "PLAY_GAMES_CONFIGURED", playGamesAppId.isNotEmpty().toString())
+        buildConfigField("boolean", "ONLINE_CONFIGURED", onlineConfigured.toString())
+        buildConfigField("String", "ONLINE_NEON_FUNCTION_URL", "\"$onlineFunctionUrl\"")
         playGamesIds.forEach { key ->
             buildConfigField("String", key, "\"${playGamesConfig(key)}\"")
         }
