@@ -127,7 +127,7 @@ $$;
 -- Held row locks and SKIP LOCKED prevent two players claiming the same seat.
 create or replace function public.ultttt_find_match(p_actor text)
 returns public.ultttt_matches language plpgsql security invoker set search_path = ''
-as $
+as $$
 declare
     v_user text := p_actor;
     v_match public.ultttt_matches;
@@ -160,7 +160,7 @@ begin
         returning * into v_match;
     return v_match;
 end;
-$;
+$$;
 
 create or replace function public.ultttt_join_match(p_actor text, p_invite_code text)
 returns public.ultttt_matches language plpgsql security invoker set search_path = ''
