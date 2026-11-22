@@ -30,26 +30,33 @@ a separate secure match backend.
    Setup → App integrity. Do **not** substitute the upload-key SHA-1. If you
    also sideload debug builds, add a separate debug credential with the debug
    signing SHA-1.
-4. Go to **Achievements** and create these five **standard (not incremental)**
-   achievements. Use suitable names and descriptions; the IDs below are
-   **semantic names for the app configuration**, not Play-assigned identifiers.
+4. **Automated: five achievements and one leaderboard.** The repository now contains
+   `Scripts/configure_play_games.py` and the GitHub Actions workflow **Ultimate
+   TTT - Play Games configuration (draft only)**. Once the numeric UTTT Play
+   Games project ID is supplied in `android/play-games-project-id.txt` on the
+   PR branch, the workflow authenticates with the existing Google Play
+   service account and creates only missing **draft** resources:
 
-   | Name | When awarded | Config key |
+   | Name | Kind | When awarded |
    | --- | --- | --- |
-   | First Win | First win vs computer | PGS_FIRST_WIN_ID |
-   | Five Wins | Five wins vs computer | PGS_FIVE_WINS_ID |
-   | Ten Wins | Ten wins vs computer | PGS_TEN_WINS_ID |
-   | First Online Win | First confirmed online win | PGS_FIRST_ONLINE_WIN_ID |
-   | 25 Online Wins | Twenty-five confirmed online wins | PGS_TWENTY_FIVE_ONLINE_WINS_ID |
+   | First Win | Standard achievement | First win vs computer |
+   | Five Wins | Standard achievement | Five wins vs computer |
+   | Ten Wins | Standard achievement | Ten wins vs computer |
+   | First Online Win | Standard achievement | First confirmed online win |
+   | 25 Online Wins | Standard achievement | Twenty-five confirmed online wins |
+   | Online Wins | Leaderboard (integer, high to low) | Cumulative online wins |
 
-5. In **Leaderboards**, create **Online Wins**, integer, higher is better, no
-   reset, with the user's **cumulative online wins**. Save its assigned ID as
-   `PGS_ONLINE_WINS_LEADERBOARD_ID`.
-6. Copy the **actual Google-generated IDs** from the Play Console resources
-   view into `android/play-games.properties` in the repo. Also fill the
-   numeric `PLAY_GAMES_APP_ID`. All seven IDs are public app identifiers,
-   **not secrets**; they may be committed. They can alternatively be supplied
-   as matching `ULTTTT_*` build environment variables.
+5. After success, the workflow returns Google's **real resource IDs** in an
+   artifact named `ultttt-play-games-public-ids`. Copy its generated
+   `android/play-games.properties` into the branch before merging. The
+   project ID and resource IDs are **public**, not Google API secrets.
+   Provisioning is safe to retry, reuses resources by exact English name,
+   and never publishes Play Games configuration or an Android build.
+6. To review without creating drafts, manually run the workflow with
+   `apply_draft=false`. An automatic run from the checked-in project ID
+   file provisions missing drafts. Do not use EZ Trivia's project number
+   or other games' resources.
+
 7. Under **Testers**, add your Google account, a second tester, and/or enable
    the **internal test track** for Play Games Services. Unpublished PGS apps
    return sign-in/404 errors for accounts outside the tester list.
