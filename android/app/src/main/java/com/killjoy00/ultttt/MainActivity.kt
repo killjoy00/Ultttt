@@ -2,6 +2,7 @@ package com.killjoy00.ultttt
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.core.view.WindowCompat
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -42,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +75,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Edge-to-edge on Android 8+; Compose handles system bar insets below.
+        WindowCompat.enableEdgeToEdge(window)
         val store = LocalSessionStore(applicationContext)
         monetization = AndroidMonetization(this)
         playGames = AndroidPlayGames(this)
@@ -149,6 +153,19 @@ private fun UltimateApp(
         background = LightBackground, surface = Color.White,
         onSurface = Color(0xFF152736), onBackground = Color(0xFF152736)
     )
+    // Keep status/navigation icons readable if the user switches between light and dark.
+    val hostActivity = LocalContext.current as? ComponentActivity
+    SideEffect {
+        hostActivity?.window?.let { window ->
+            val bars = WindowCompat.getInsetsController(window, window.decorView)
+            bars.isAppearanceLightStatusBars = !isDark
+            bars.isAppearanceLightNavigationBars = !isDark
+            window.decorView.setBackgroundColor(
+                if (isDark) android.graphics.Color.rgb(17, 30, 48)
+                else android.graphics.Color.rgb(245, 247, 246)
+            )
+        }
+    }
     MaterialTheme(colorScheme = scheme) {
         // Reserve a separate bottom slot for the banner. Insets keep ads clear of
         // Android's gesture/navigation bar on edge-to-edge devices.
