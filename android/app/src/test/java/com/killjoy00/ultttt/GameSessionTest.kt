@@ -21,6 +21,15 @@ class GameSessionTest {
         assertEquals(0, undone.game.moves.size)
     }
 
+    @Test fun rematchResetsIdAndUndoDoesNot() {
+        val first = GameSession()
+        val moved = requireNotNull(first.play(Move(4, 3)))
+        val undone = requireNotNull(moved.undoTurn())
+        assertEquals(first.gameId, moved.gameId)
+        assertEquals(first.gameId, undone.gameId)
+        assertNotEquals(first.gameId, first.newGame(GameMode.SOLO, Difficulty.MEDIUM).gameId)
+    }
+
     @Test fun humanCannotScoreOnRejectedMove() {
         val session = GameSession()
         assertNull(session.play(Move(0, 50)))
