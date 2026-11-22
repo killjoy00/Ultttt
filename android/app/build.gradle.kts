@@ -118,8 +118,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.12.4")
     // Use the current maintained Fragment runtime even when supplied transitively.
     implementation("androidx.fragment:fragment:1.9.1")
-    // WindowCompat.enableEdgeToEdge is supported on older Android versions via Core.
-    implementation("androidx.core:core:1.19.1")
+    // Core 1.17 includes WindowCompat.enableEdgeToEdge and supports compileSdk 36 / AGP 8.
+    implementation("androidx.core:core:1.17.0")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
