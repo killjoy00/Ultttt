@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,7 +8,7 @@ plugins {
 
 // Play Games IDs are public identifiers, not API secrets. Fill android/play-games.properties
 // or use matching ULTTTT_* environment variables in release automation.
-val playGamesProperties = java.util.Properties().apply {
+val playGamesProperties = Properties().apply {
     val configFile = rootProject.file("play-games.properties")
     if (configFile.exists()) configFile.inputStream().use { load(it) }
 }
