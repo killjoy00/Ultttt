@@ -1,0 +1,42 @@
+name: Bundle UTTT Neon Function for deployment
+on:
+  push:
+    branches: [automation/ultttt-neon-function-bundle]
+    paths: [.github/workflows/ultttt-neon-bundle.yml]
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: automation/ultttt-neon-function-bundle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Bundle pinned source and dependencies
+        working-directory: android/online-backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund esbuild@0.25.12
+          mkdir -p dist
+          ./node_modules/.bin/esbuild functions/ulttttonline/index.mjs --bundle --platform=node --target=node24 --format=esm --banner:js="import{createRequire as ___cr}from'module';import{fileURLToPath as ___f}from'url';import{dirname as ___d}from'path';const require=___cr(import.meta.url);const __filename=___f(import.meta.url);const __dirname=___d(__filename);" --outfile=dist/index.mjs
+          node --check dist/index.mjs
+          (cd dist && zip -q -9 function.zip index.mjs)
+          mkdir -p ../../deploy-artifacts
+          base64 -w 0 dist/function.zip > ../../deploy-artifacts/ultttt-function.zip.b64
+          sha256sum dist/function.zip > ../../deploy-artifacts/ultttt-function.sha256
+          ls -l dist/function.zip
+      - name: Commit deterministic deploy bundle for connected Neon tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add deploy-artifacts/ultttt-function.zip.b64 deploy-artifacts/ultttt-function.sha256
+          git commit -m "build: UTTT Neon Function release bundle"
+          git push origin HEAD:automation/ultttt-neon-function-bundle
