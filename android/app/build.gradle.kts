@@ -62,7 +62,7 @@ android {
             if (playGamesAppId.isNotEmpty()) playGamesAppId else "0000000000")
         buildConfigField("boolean", "PLAY_GAMES_CONFIGURED", playGamesAppId.isNotEmpty().toString())
         playGamesIds.forEach { key ->
-            buildConfigField("String", key, "\\\"${playGamesConfig(key)}\\\"")
+            buildConfigField("String", key, "\"${playGamesConfig(key)}\"")
         }
         buildConfigField("boolean", "ADMOB_CONFIGURED", liveAdMobConfigured.toString())
         buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"$configuredBannerId\"")
