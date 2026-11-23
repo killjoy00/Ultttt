@@ -20,6 +20,8 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
 
     var isAuthenticated by mutableStateOf(false)
         private set
+    var signInInProgress by mutableStateOf(false)
+        private set
     var message by mutableStateOf<String?>(null)
         private set
 
@@ -34,6 +36,7 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
             PlayGamesSdk.initialize(activity)
             refreshAuthentication()
         } catch (error: Exception) {
+            initialized = false
             message = "Google Play Games could not start: ${error.localizedMessage}"
         }
     }
@@ -45,6 +48,47 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
                 isAuthenticated = task.isSuccessful && task.result.isAuthenticated
                 if (isAuthenticated) syncProgress()
             }
+    }
+
+    /**
+     * Automatic Play Games authentication can fail or be disabled on a device.
+     * Give the player a deliberate retry rather than only checking isAuthenticated().
+     */
+    fun signIn(onSuccess: () -> Unit = {}) {
+        if (!isConfigured) {
+            message = "Google Play Games has not been configured for this build."
+            return
+        }
+        if (!initialized) {
+            message = "Finish the tutorial before connecting to Google Play Games."
+            return
+        }
+        if (isAuthenticated) {
+            onSuccess()
+            return
+        }
+        if (signInInProgress) return
+        signInInProgress = true
+        message = null
+        try {
+            PlayGames.getGamesSignInClient(activity).signIn()
+                .addOnCompleteListener(activity) { task ->
+                    signInInProgress = false
+                    isAuthenticated = task.isSuccessful && task.result.isAuthenticated
+                    if (isAuthenticated) {
+                        syncProgress()
+                        onSuccess()
+                    } else {
+                        val detail = task.exception?.localizedMessage?.takeIf { it.isNotBlank() }
+                        message = if (detail == null)
+                            "Google Play Games sign-in did not finish. Check your Play Games account and try again."
+                        else "Google Play Games sign-in failed: $detail"
+                    }
+                }
+        } catch (error: Exception) {
+            signInInProgress = false
+            message = "Google Play Games sign-in could not start: ${error.localizedMessage}"
+        }
     }
 
     /** Deduplicate per saved solo game, including undo/re-win of the same game. */
@@ -88,14 +132,14 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
     }
 
     fun showAchievements() {
-        if (!readyToShow()) return
+        if (!readyToShow { showAchievements() }) return
         PlayGames.getAchievementsClient(activity).getAchievementsIntent()
             .addOnSuccessListener { activity.startActivityForResult(it, 9021) }
             .addOnFailureListener { message = "Achievements are unavailable: ${it.localizedMessage}" }
     }
 
     fun showLeaderboards() {
-        if (!readyToShow()) return
+        if (!readyToShow { showLeaderboards() }) return
         if (BuildConfig.PGS_ONLINE_WINS_LEADERBOARD_ID.isBlank()) {
             message = "The online wins leaderboard has not been configured yet."
             return
@@ -106,14 +150,13 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
             .addOnFailureListener { message = "The leaderboard is unavailable: ${it.localizedMessage}" }
     }
 
-    private fun readyToShow(): Boolean {
+    private fun readyToShow(onAuthenticated: () -> Unit): Boolean {
         if (!isConfigured) {
             message = "Google Play Games has not been configured for this build."
             return false
         }
         if (!isAuthenticated) {
-            message = "Sign in to Google Play Games on this device to continue."
-            refreshAuthentication()
+            signIn(onAuthenticated)
             return false
         }
         return true
