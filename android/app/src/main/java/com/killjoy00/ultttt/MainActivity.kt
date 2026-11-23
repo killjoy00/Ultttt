@@ -355,7 +355,10 @@ private fun UltimateApp(
             onDismissRequest = { showStatistics = false },
             title = { Text("Statistics") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text("X wins: " + session.xWins)
                     Text("O wins: " + session.oWins)
                     Text("Draws: " + session.draws)
@@ -363,10 +366,21 @@ private fun UltimateApp(
                     Text("Scores are saved on this device.", style = MaterialTheme.typography.bodySmall)
                     if (playGames.isConfigured) {
                         Text(
-                            if (playGames.isAuthenticated) "Connected to Google Play Games"
-                            else "Google Play Games sign-in is not available.",
+                            when {
+                                playGames.isAuthenticated -> "Connected to Google Play Games"
+                                playGames.signInInProgress -> "Connecting to Google Play Games..."
+                                else -> "Not connected to Google Play Games."
+                            },
                             style = MaterialTheme.typography.bodySmall
                         )
+                        if (!playGames.isAuthenticated) {
+                            OutlinedButton(
+                                onClick = { playGames.signIn() },
+                                enabled = !playGames.signInInProgress
+                            ) {
+                                Text(if (playGames.signInInProgress) "Connecting..." else "Sign in to Play Games")
+                            }
+                        }
                         Text("Solo wins tracked for achievements: " + playGames.soloWins)
                         Text("Online wins: " + playGames.onlineWins)
                         OutlinedButton(onClick = { playGames.showAchievements() }) {
