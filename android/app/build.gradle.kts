@@ -48,6 +48,17 @@ val releaseVersionCode = providers.environmentVariable("ULTTTT_VERSION_CODE").or
 val releaseVersionName = providers.environmentVariable("ULTTTT_VERSION_NAME").orNull
 val uploadStorePath = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE_PATH").orNull
 val uploadStorePassword = providers.environmentVariable("ANDROID_UPLOAD_KEY_PASSWORD").orNull
+// A store-signed build must ship both online features. Unsigned local/CI builds may
+// still omit Neon, but a missing release environment variable must never silently
+// remove multiplayer (as happened in Android version codes 8 and 9).
+if (!uploadStorePath.isNullOrBlank()) {
+    require(onlineConfigured) {
+        "Signed Android release requires ULTTTT_ONLINE_NEON_FUNCTION_URL; refusing to disable multiplayer."
+    }
+    require(playGamesAppId.isNotEmpty() && playGamesIds.all { playGamesConfig(it).isNotEmpty() }) {
+        "Signed Android release requires the Play Games project and all achievement/leaderboard IDs."
+    }
+}
 // Live AdMob identifiers are NOT inferred from the publisher ID. Supply them at release time.
 // A release built without both IDs compiles safely but cannot request live advertisements.
 val liveAdMobAppId = providers.environmentVariable("ULTTTT_ADMOB_ANDROID_APP_ID").orNull.orEmpty().trim()
