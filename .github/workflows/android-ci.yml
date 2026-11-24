@@ -81,3 +81,23 @@ jobs:
           name: ultimate-ttt-android-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+      - name: Prevent a signed release from silently dropping multiplayer
+        shell: bash
+        env:
+          ANDROID_UPLOAD_KEYSTORE_PATH: ${{ runner.temp }}/configuration-check-only.p12
+        run: |
+          set -euo pipefail
+          if ULTTTT_ONLINE_NEON_FUNCTION_URL='' gradle --no-daemon -p android help > "$RUNNER_TEMP/missing-online.log" 2>&1; then
+            echo '::error::Signed configuration accepted a missing online endpoint.'
+            exit 1
+          fi
+          grep -Fq 'Signed Android release requires ULTTTT_ONLINE_NEON_FUNCTION_URL' "$RUNNER_TEMP/missing-online.log"
+          # Generate BuildConfig only: this check does not need an actual signing key.
+          export ULTTTT_ONLINE_NEON_FUNCTION_URL='https://br-crimson-haze-bdif60qf-ulttttonline.compute.c-8.us-east-2.aws.neon.tech'
+          gradle --no-daemon -p android :app:generateReleaseBuildConfig
+          config=android/app/build/generated/source/buildConfig/release
+          grep -RFq 'ONLINE_CONFIGURED = true' "$config"
+          grep -RFq "$ULTTTT_ONLINE_NEON_FUNCTION_URL" "$config"
+          grep -RFq 'PLAY_GAMES_CONFIGURED = true' "$config"
+          grep -RFq '517518057047' "$config"
+          echo 'Verified signed configuration retains both multiplayer and Play Games.'
