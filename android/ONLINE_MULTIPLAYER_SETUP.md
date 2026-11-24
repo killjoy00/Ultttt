@@ -54,6 +54,11 @@ An account-connected agent can perform these steps with the Neon CLI/MCP:
    `ULTTTT_ONLINE_NEON_FUNCTION_URL` for an **internal-testing** AAB.
    It must be an HTTPS `*.neon.tech` function URL. Never put `DATABASE_URL`,
    a Neon API key, or a secret in the app build.
+   Store-signed builds now fail configuration if the endpoint or any Play Games
+   resource ID is missing. The existing approved Play Games project and Neon
+   endpoint must both be retained; do not change guest storage or create a new
+   database to fix a build configuration regression. Android CI checks that
+   missing configuration fails and that both features are enabled together.
 6. Install the AAB from the Google Play internal track on **two different
    Android devices** and verify:
    - Guest starts a private invite; another guest joins with its code
