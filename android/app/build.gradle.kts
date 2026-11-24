@@ -76,6 +76,7 @@ android {
         resValue("string", "game_services_project_id",
             if (playGamesAppId.isNotEmpty()) playGamesAppId else "0000000000")
         buildConfigField("boolean", "PLAY_GAMES_CONFIGURED", playGamesAppId.isNotEmpty().toString())
+        buildConfigField("String", "PLAY_GAMES_PROJECT_ID", "\"$playGamesAppId\"")
         buildConfigField("boolean", "ONLINE_CONFIGURED", onlineConfigured.toString())
         buildConfigField("String", "ONLINE_NEON_FUNCTION_URL", "\"$onlineFunctionUrl\"")
         playGamesIds.forEach { key ->

@@ -4,6 +4,7 @@
     <!-- Play requires a billing-enabled bundle before one-time products can be activated. -->
     <uses-permission android:name="com.android.vending.BILLING" />
     <application
+        android:name=".UlttttApplication"
         android:allowBackup="true"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"

@@ -1,11 +1,22 @@
 package com.killjoy00.ultttt
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.games.AuthenticationResult
+import com.google.android.gms.games.GamesClientStatusCodes
 import com.google.android.gms.games.PlayGames
-import com.google.android.gms.games.PlayGamesSdk
+import com.google.android.gms.tasks.Task
+import java.security.MessageDigest
 
 /**
  * Google Play Games Services v2 is for platform achievements and leaderboards,
@@ -16,7 +27,18 @@ import com.google.android.gms.games.PlayGamesSdk
  */
 class AndroidPlayGames(private val activity: ComponentActivity) {
     private val prefs = activity.getSharedPreferences("ultttt-play-games-v1", 0)
-    private var initialized = false
+    private val app get() = activity.application as? UlttttApplication
+    private val active get() = !activity.isDestroyed && !activity.isFinishing
+    private var requestEpoch = 0
+
+    var checkingAuthentication by mutableStateOf(false)
+        private set
+    var automaticStatus by mutableStateOf("Not checked")
+        private set
+    var manualStatus by mutableStateOf("Not attempted")
+        private set
+    var playerApiStatus by mutableStateOf("Not checked")
+        private set
 
     var isAuthenticated by mutableStateOf(false)
         private set
@@ -29,38 +51,51 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
     val soloWins: Int get() = prefs.getStringSet("solo_game_ids", emptySet())?.size ?: 0
     val onlineWins: Int get() = prefs.getStringSet("online_match_ids", emptySet())?.size ?: 0
 
-    fun initializeAfterTutorial() {
-        if (!isConfigured || initialized) return
-        initialized = true
+    private fun ensureInitialized(): Boolean =
+        app?.initializePlayGames() == true
+
+    fun refreshAuthentication() {
+        if (!active || !isConfigured || signInInProgress || checkingAuthentication) return
+        if (!ensureInitialized()) {
+            automaticStatus = app?.playGamesInitializationStatus ?: "Application setup missing"
+            return
+        }
+        val epoch = requestEpoch
+        checkingAuthentication = true
         try {
-            PlayGamesSdk.initialize(activity)
-            refreshAuthentication()
+            PlayGames.getGamesSignInClient(activity).isAuthenticated()
+                .addOnCompleteListener { task ->
+                    if (!active || epoch != requestEpoch) return@addOnCompleteListener
+                    checkingAuthentication = false
+                    automaticStatus = describeAuthentication(task)
+                    isAuthenticated = task.isSuccessful && task.result.isAuthenticated
+                    Log.i("ULTTT.PlayGames", "Automatic: " + automaticStatus)
+                    if (isAuthenticated) {
+                        syncProgress()
+                    }
+                }
         } catch (error: Exception) {
-            initialized = false
-            message = "Google Play Games could not start: ${error.localizedMessage}"
+            checkingAuthentication = false
+            automaticStatus = describeError(error)
+            isAuthenticated = false
+            Log.w("ULTTT.PlayGames", "Automatic: " + automaticStatus)
         }
     }
 
-    fun refreshAuthentication() {
-        if (!initialized) return
-        PlayGames.getGamesSignInClient(activity).isAuthenticated()
-            .addOnCompleteListener(activity) { task ->
-                isAuthenticated = task.isSuccessful && task.result.isAuthenticated
-                if (isAuthenticated) syncProgress()
-            }
-    }
-
     /**
-     * Automatic Play Games authentication can fail or be disabled on a device.
-     * Give the player a deliberate retry rather than only checking isAuthenticated().
+     * The user can retry after automatic authentication fails. Listen without an
+     * Activity-scoped Task listener: Google's UI may stop the Activity temporarily.
+     * Ignore stale results after a new attempt or Activity destruction.
      */
     fun signIn(onSuccess: () -> Unit = {}) {
+        if (!active) return
         if (!isConfigured) {
             message = "Google Play Games has not been configured for this build."
             return
         }
-        if (!initialized) {
-            message = "Finish the tutorial before connecting to Google Play Games."
+        if (!ensureInitialized()) {
+            manualStatus = app?.playGamesInitializationStatus ?: "Application setup missing"
+            message = "Google Play Games could not start. " + manualStatus
             return
         }
         if (isAuthenticated) {
@@ -68,27 +103,140 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
             return
         }
         if (signInInProgress) return
+        val epoch = ++requestEpoch
+        checkingAuthentication = false
         signInInProgress = true
+        manualStatus = "Connecting..."
+        playerApiStatus = "Not checked"
         message = null
         try {
             PlayGames.getGamesSignInClient(activity).signIn()
-                .addOnCompleteListener(activity) { task ->
+                .addOnCompleteListener { task ->
+                    if (!active || epoch != requestEpoch) return@addOnCompleteListener
                     signInInProgress = false
+                    manualStatus = describeAuthentication(task)
                     isAuthenticated = task.isSuccessful && task.result.isAuthenticated
+                    Log.i("ULTTT.PlayGames", "Manual: " + manualStatus)
                     if (isAuthenticated) {
                         syncProgress()
                         onSuccess()
                     } else {
-                        val detail = task.exception?.localizedMessage?.takeIf { it.isNotBlank() }
-                        message = if (detail == null)
-                            "Google Play Games sign-in did not finish. Check your Play Games account and try again."
-                        else "Google Play Games sign-in failed: $detail"
+                        message = failedSignInMessage()
+                        probePlayerApi(epoch)
                     }
                 }
         } catch (error: Exception) {
             signInInProgress = false
-            message = "Google Play Games sign-in could not start: ${error.localizedMessage}"
+            manualStatus = describeError(error)
+            Log.w("ULTTT.PlayGames", "Manual: " + manualStatus)
+            message = failedSignInMessage()
+            probePlayerApi(epoch)
         }
+    }
+
+    // The sign-in Task may return false without an exception. A separate read-only
+    // Games API request can expose the real status code. Never store or log player IDs.
+    private fun probePlayerApi(epoch: Int) {
+        playerApiStatus = "Checking..."
+        try {
+            PlayGames.getPlayersClient(activity).getCurrentPlayerId()
+                .addOnCompleteListener { task ->
+                    if (!active || epoch != requestEpoch) return@addOnCompleteListener
+                    playerApiStatus = when {
+                        task.isSuccessful -> "Player API responded successfully"
+                        task.isCanceled -> "Canceled"
+                        else -> describeError(task.exception)
+                    }
+                    Log.i("ULTTT.PlayGames", "Player API: " + playerApiStatus)
+                    if (!isAuthenticated && message != null) message = failedSignInMessage()
+                }
+        } catch (error: Exception) {
+            playerApiStatus = describeError(error)
+            Log.w("ULTTT.PlayGames", "Player API: " + playerApiStatus)
+            if (!isAuthenticated && message != null) message = failedSignInMessage()
+        }
+    }
+
+    private fun describeAuthentication(task: Task<AuthenticationResult>): String = when {
+        task.isSuccessful && task.result.isAuthenticated -> "Authenticated"
+        task.isSuccessful -> "Completed, authenticated=false"
+        task.isCanceled -> "Canceled"
+        else -> describeError(task.exception)
+    }
+
+    private fun describeError(error: Exception?): String = when (error) {
+        is ApiException -> GamesClientStatusCodes.getStatusCodeString(error.statusCode) +
+            " (" + error.statusCode + ")"
+        null -> "No exception supplied"
+        else -> error.javaClass.simpleName
+    }
+
+    private fun servicesStatus(): String = runCatching {
+        val availability = GoogleApiAvailability.getInstance()
+        val code = availability.isGooglePlayServicesAvailable(activity)
+        availability.getErrorString(code) + " (" + code + ")"
+    }.getOrDefault("Unavailable")
+
+    @Suppress("DEPRECATION")
+    private fun installedAppDetails(): String {
+        val manager = activity.packageManager
+        val pkg = activity.packageName
+        val signing = runCatching {
+            val flags = if (Build.VERSION.SDK_INT >= 28)
+                PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+            val info = manager.getPackageInfo(pkg, flags)
+            val signatures = if (Build.VERSION.SDK_INT >= 28)
+                info.signingInfo?.apkContentsSigners else info.signatures
+            signatures?.joinToString(", ") { signature ->
+                MessageDigest.getInstance("SHA-1").digest(signature.toByteArray())
+                    .joinToString(":") { "%02X".format(it.toInt() and 0xff) }
+            } ?: "Unknown"
+        }.getOrDefault("Unknown")
+        val installer = runCatching {
+            if (Build.VERSION.SDK_INT >= 30)
+                manager.getInstallSourceInfo(pkg).installingPackageName
+            else manager.getInstallerPackageName(pkg)
+        }.getOrNull() ?: "Unknown"
+        val manifestId = runCatching {
+            val metadata = manager.getApplicationInfo(pkg, PackageManager.GET_META_DATA).metaData
+            val value = metadata?.get("com.google.android.gms.games.APP_ID")
+            when (value) {
+                is Int -> runCatching { activity.getString(value) }.getOrDefault(value.toString())
+                null -> "Missing"
+                else -> value.toString()
+            }
+        }.getOrDefault("Unreadable")
+        val resourceId = runCatching { activity.getString(R.string.game_services_project_id) }
+            .getOrDefault("Unreadable")
+        return listOf(
+            "ULTTT " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")",
+            "Package: " + pkg,
+            "Installer: " + installer,
+            "Installed signing SHA-1: " + signing,
+            "Project ID (expected): " + BuildConfig.PLAY_GAMES_PROJECT_ID,
+            "Project ID (manifest): " + manifestId,
+            "Project ID (resource): " + resourceId
+        ).joinToString("\n")
+    }
+
+    private fun failedSignInMessage(): String =
+        "Google Play Games did not connect.\n\n" +
+            "Sign-in: " + manualStatus + "\n" +
+            "Player API: " + playerApiStatus + "\n" +
+            "Play services: " + servicesStatus() +
+            "\n\nCopy sign-in details from Statistics for troubleshooting."
+
+    fun copyDiagnostics() {
+        val report = installedAppDetails() + "\n" + listOf(
+            "SDK startup: " + (app?.playGamesInitializationStatus ?: "Application setup missing"),
+            "Google Play services: " + servicesStatus(),
+            "Automatic check: " + automaticStatus,
+            "Manual sign-in: " + manualStatus,
+            "Player API: " + playerApiStatus
+        ).joinToString("\n")
+        activity.getSystemService(ClipboardManager::class.java)
+            ?.setPrimaryClip(ClipData.newPlainText("ULTTT Play Games diagnostics", report))
+        Toast.makeText(activity, "Sign-in details copied", Toast.LENGTH_SHORT).show()
     }
 
     /** Deduplicate per saved solo game, including undo/re-win of the same game. */
@@ -134,8 +282,8 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
     fun showAchievements() {
         if (!readyToShow { showAchievements() }) return
         PlayGames.getAchievementsClient(activity).getAchievementsIntent()
-            .addOnSuccessListener { activity.startActivityForResult(it, 9021) }
-            .addOnFailureListener { message = "Achievements are unavailable: ${it.localizedMessage}" }
+            .addOnSuccessListener { if (active) activity.startActivityForResult(it, 9021) }
+            .addOnFailureListener { if (active) message = "Achievements are unavailable: " + describeError(it) }
     }
 
     fun showLeaderboards() {
@@ -146,8 +294,8 @@ class AndroidPlayGames(private val activity: ComponentActivity) {
         }
         PlayGames.getLeaderboardsClient(activity)
             .getLeaderboardIntent(BuildConfig.PGS_ONLINE_WINS_LEADERBOARD_ID)
-            .addOnSuccessListener { activity.startActivityForResult(it, 9022) }
-            .addOnFailureListener { message = "The leaderboard is unavailable: ${it.localizedMessage}" }
+            .addOnSuccessListener { if (active) activity.startActivityForResult(it, 9022) }
+            .addOnFailureListener { if (active) message = "The leaderboard is unavailable: " + describeError(it) }
     }
 
     private fun readyToShow(onAuthenticated: () -> Unit): Boolean {

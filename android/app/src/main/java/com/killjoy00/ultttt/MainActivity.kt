@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
         val store = LocalSessionStore(applicationContext)
         monetization = AndroidMonetization(this)
         playGames = AndroidPlayGames(this)
+        playGames.refreshAuthentication()
         onlineService = OnlineMatchService(applicationContext)
         setContent { UltimateApp(store, monetization, playGames, onlineService) }
     }
@@ -123,7 +124,6 @@ private fun UltimateApp(
     LaunchedEffect(tutorialStep) {
         if (tutorialStep < 0) {
             monetization.onGameplayReady()
-            playGames.initializeAfterTutorial()
         }
     }
 
@@ -369,6 +369,7 @@ private fun UltimateApp(
                             when {
                                 playGames.isAuthenticated -> "Connected to Google Play Games"
                                 playGames.signInInProgress -> "Connecting to Google Play Games..."
+                                playGames.checkingAuthentication -> "Checking Google Play Games..."
                                 else -> "Not connected to Google Play Games."
                             },
                             style = MaterialTheme.typography.bodySmall
@@ -379,6 +380,11 @@ private fun UltimateApp(
                                 enabled = !playGames.signInInProgress
                             ) {
                                 Text(if (playGames.signInInProgress) "Connecting..." else "Sign in to Play Games")
+                            }
+                        }
+                        if (!playGames.isAuthenticated) {
+                            TextButton(onClick = { playGames.copyDiagnostics() }) {
+                                Text("Copy sign-in details")
                             }
                         }
                         Text("Solo wins tracked for achievements: " + playGames.soloWins)
