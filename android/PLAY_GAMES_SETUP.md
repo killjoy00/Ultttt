@@ -7,9 +7,13 @@ a separate secure match backend.
 
 ## What is already coded
 
-- Initialize Play Games v2 **after** the first-launch tutorial so the tutorial
-  cannot be interrupted by third-party sign-in prompts.
-- Detect player authentication, retry synchronization when they return to the app.
+- Initialize Play Games v2 in `UlttttApplication.onCreate()`, before the tutorial,
+  per Google's official startup guidance. Check authentication at activity startup and
+  resume; provide a manual sign-in action in Statistics.
+- If authentication fails, Statistics offers **Copy sign-in details** with the installed
+  certificate fingerprint, manifest/project ID, installer, Play services availability,
+  and SDK authentication/player API status. No player IDs, account names, or tokens
+  are logged or copied. Offline gameplay and progress remain independent of sign-in.
 - Show Play Games achievements and the online-wins leaderboard from Statistics.
 - Track unique solo games and online wins separately; never count pass-and-play as
   a solo achievement, and never award two wins for an undo/re-win of one game.
@@ -23,7 +27,9 @@ a separate secure match backend.
 2. Go to **Grow users → Play Games Services → Setup and management →
    Configuration**. Set up a Play Games Services project if one is not linked.
    Use the **numeric Play Games Services Project ID** (shown beneath the game name),
-   not the Google Cloud project name or the Android package.
+   not the Google Cloud project name or the Android package. Verify that the linked
+   Google Cloud project has the Google Play Games Services API (`games.googleapis.com`)
+   enabled.
 3. Under **Credentials** / **Linked apps**, create or verify the Android
    credential for **com.killjoy00.ultttt**. Its **SHA-1 must match the App
    signing key certificate** shown at Play Console → Test and release →

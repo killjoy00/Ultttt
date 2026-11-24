@@ -62,6 +62,20 @@ jobs:
           "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/ultttt-badging.txt"
           grep -q "^application-icon" "$RUNNER_TEMP/ultttt-badging.txt"
           grep -Fq "Ultimate Tic/Tac/Toe" "$RUNNER_TEMP/ultttt-badging.txt"
+      - name: Verify packaged Play Games initialization and project ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > "$RUNNER_TEMP/ultttt-manifest.txt"
+          grep -Fq 'UlttttApplication' "$RUNNER_TEMP/ultttt-manifest.txt"
+          grep -Fq 'com.google.android.gms.games.APP_ID' "$RUNNER_TEMP/ultttt-manifest.txt"
+          "$AAPT" dump --values resources "$APK" > "$RUNNER_TEMP/ultttt-resources.txt"
+          grep -Fq 'string/game_services_project_id' "$RUNNER_TEMP/ultttt-resources.txt"
+          project_id=$(sed -n 's/^PLAY_GAMES_APP_ID=//p' android/play-games.properties)
+          [[ "$project_id" =~ ^[0-9]+$ ]]
+          grep -Fq "$project_id" "$RUNNER_TEMP/ultttt-resources.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: ultimate-ttt-android-debug
