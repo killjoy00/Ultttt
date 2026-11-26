@@ -9,6 +9,11 @@ on:
       - 'android/**'
       - '.github/workflows/android-ci.yml'
 
+# Do not keep running outdated PR revisions; never cancel main/manual work.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   rules-tests:
     name: Game rules tests
